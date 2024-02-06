@@ -1,0 +1,10 @@
+[BITS 32]
+
+db 0xe8
+db 0x00
+db 0x00
+
+; expected output from disassembler:
+; db 0xe8
+; db 0x00
+; db 0x00

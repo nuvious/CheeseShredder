@@ -1,0 +1,257 @@
+﻿SIB (dec),SIB,SS,Index,Base,Scaled Index,r32
+0,00,0,0,0,[EAX],EAX
+1,01,0,0,1,[EAX],ECX
+2,02,0,0,2,[EAX],EDX
+3,03,0,0,3,[EAX],EBX
+4,04,0,0,4,[EAX],ESP
+5,05,0,0,5,[EAX],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+6,06,0,0,6,[EAX],ESI
+7,07,0,0,7,[EAX],EDI
+8,08,0,1,0,[ECX],EAX
+9,09,0,1,1,[ECX],ECX
+10,0A,0,1,2,[ECX],EDX
+11,0B,0,1,3,[ECX],EBX
+12,0C,0,1,4,[ECX],ESP
+13,0D,0,1,5,[ECX],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+14,0E,0,1,6,[ECX],ESI
+15,0F,0,1,7,[ECX],EDI
+16,10,0,2,0,[EDX],EAX
+17,11,0,2,1,[EDX],ECX
+18,12,0,2,2,[EDX],EDX
+19,13,0,2,3,[EDX],EBX
+20,14,0,2,4,[EDX],ESP
+21,15,0,2,5,[EDX],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+22,16,0,2,6,[EDX],ESI
+23,17,0,2,7,[EDX],EDI
+24,18,0,3,0,[EBX],EAX
+25,19,0,3,1,[EBX],ECX
+26,1A,0,3,2,[EBX],EDX
+27,1B,0,3,3,[EBX],EBX
+28,1C,0,3,4,[EBX],ESP
+29,1D,0,3,5,[EBX],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+30,1E,0,3,6,[EBX],ESI
+31,1F,0,3,7,[EBX],EDI
+32,20,0,4,0,,EAX
+33,21,0,4,1,,ECX
+34,22,0,4,2,,EDX
+35,23,0,4,3,,EBX
+36,24,0,4,4,,ESP
+37,25,0,4,5,,"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+38,26,0,4,6,,ESI
+39,27,0,4,7,,EDI
+40,28,0,5,0,[EBP],EAX
+41,29,0,5,1,[EBP],ECX
+42,2A,0,5,2,[EBP],EDX
+43,2B,0,5,3,[EBP],EBX
+44,2C,0,5,4,[EBP],ESP
+45,2D,0,5,5,[EBP],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+46,2E,0,5,6,[EBP],ESI
+47,2F,0,5,7,[EBP],EDI
+48,30,0,6,0,[ESI],EAX
+49,31,0,6,1,[ESI],ECX
+50,32,0,6,2,[ESI],EDX
+51,33,0,6,3,[ESI],EBX
+52,34,0,6,4,[ESI],ESP
+53,35,0,6,5,[ESI],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+54,36,0,6,6,[ESI],ESI
+55,37,0,6,7,[ESI],EDI
+56,38,0,7,0,[EDI],EAX
+57,39,0,7,1,[EDI],ECX
+58,3A,0,7,2,[EDI],EDX
+59,3B,0,7,3,[EDI],EBX
+60,3C,0,7,4,[EDI],ESP
+61,3D,0,7,5,[EDI],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+62,3E,0,7,6,[EDI],ESI
+63,3F,0,7,7,[EDI],EDI
+64,40,1,0,0,[EAX*2],EAX
+65,41,1,0,1,[EAX*2],ECX
+66,42,1,0,2,[EAX*2],EDX
+67,43,1,0,3,[EAX*2],EBX
+68,44,1,0,4,[EAX*2],ESP
+69,45,1,0,5,[EAX*2],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+70,46,1,0,6,[EAX*2],ESI
+71,47,1,0,7,[EAX*2],EDI
+72,48,1,1,0,[ECX*2],EAX
+73,49,1,1,1,[ECX*2],ECX
+74,4A,1,1,2,[ECX*2],EDX
+75,4B,1,1,3,[ECX*2],EBX
+76,4C,1,1,4,[ECX*2],ESP
+77,4D,1,1,5,[ECX*2],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+78,4E,1,1,6,[ECX*2],ESI
+79,4F,1,1,7,[ECX*2],EDI
+80,50,1,2,0,[EDX*2],EAX
+81,51,1,2,1,[EDX*2],ECX
+82,52,1,2,2,[EDX*2],EDX
+83,53,1,2,3,[EDX*2],EBX
+84,54,1,2,4,[EDX*2],ESP
+85,55,1,2,5,[EDX*2],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+86,56,1,2,6,[EDX*2],ESI
+87,57,1,2,7,[EDX*2],EDI
+88,58,1,3,0,[EBX*2],EAX
+89,59,1,3,1,[EBX*2],ECX
+90,5A,1,3,2,[EBX*2],EDX
+91,5B,1,3,3,[EBX*2],EBX
+92,5C,1,3,4,[EBX*2],ESP
+93,5D,1,3,5,[EBX*2],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+94,5E,1,3,6,[EBX*2],ESI
+95,5F,1,3,7,[EBX*2],EDI
+96,60,1,4,0,,EAX
+97,61,1,4,1,,ECX
+98,62,1,4,2,,EDX
+99,63,1,4,3,,EBX
+100,64,1,4,4,,ESP
+101,65,1,4,5,,"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+102,66,1,4,6,,ESI
+103,67,1,4,7,,EDI
+104,68,1,5,0,[EBP*2],EAX
+105,69,1,5,1,[EBP*2],ECX
+106,6A,1,5,2,[EBP*2],EDX
+107,6B,1,5,3,[EBP*2],EBX
+108,6C,1,5,4,[EBP*2],ESP
+109,6D,1,5,5,[EBP*2],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+110,6E,1,5,6,[EBP*2],ESI
+111,6F,1,5,7,[EBP*2],EDI
+112,70,1,6,0,[ESI*2],EAX
+113,71,1,6,1,[ESI*2],ECX
+114,72,1,6,2,[ESI*2],EDX
+115,73,1,6,3,[ESI*2],EBX
+116,74,1,6,4,[ESI*2],ESP
+117,75,1,6,5,[ESI*2],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+118,76,1,6,6,[ESI*2],ESI
+119,77,1,6,7,[ESI*2],EDI
+120,78,1,7,0,[EDI*2],EAX
+121,79,1,7,1,[EDI*2],ECX
+122,7A,1,7,2,[EDI*2],EDX
+123,7B,1,7,3,[EDI*2],EBX
+124,7C,1,7,4,[EDI*2],ESP
+125,7D,1,7,5,[EDI*2],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+126,7E,1,7,6,[EDI*2],ESI
+127,7F,1,7,7,[EDI*2],EDI
+128,80,2,0,0,[EAX*4],EAX
+129,81,2,0,1,[EAX*4],ECX
+130,82,2,0,2,[EAX*4],EDX
+131,83,2,0,3,[EAX*4],EBX
+132,84,2,0,4,[EAX*4],ESP
+133,85,2,0,5,[EAX*4],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+134,86,2,0,6,[EAX*4],ESI
+135,87,2,0,7,[EAX*4],EDI
+136,88,2,1,0,[ECX*4],EAX
+137,89,2,1,1,[ECX*4],ECX
+138,8A,2,1,2,[ECX*4],EDX
+139,8B,2,1,3,[ECX*4],EBX
+140,8C,2,1,4,[ECX*4],ESP
+141,8D,2,1,5,[ECX*4],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+142,8E,2,1,6,[ECX*4],ESI
+143,8F,2,1,7,[ECX*4],EDI
+144,90,2,2,0,[EDX*4],EAX
+145,91,2,2,1,[EDX*4],ECX
+146,92,2,2,2,[EDX*4],EDX
+147,93,2,2,3,[EDX*4],EBX
+148,94,2,2,4,[EDX*4],ESP
+149,95,2,2,5,[EDX*4],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+150,96,2,2,6,[EDX*4],ESI
+151,97,2,2,7,[EDX*4],EDI
+152,98,2,3,0,[EBX*4],EAX
+153,99,2,3,1,[EBX*4],ECX
+154,9A,2,3,2,[EBX*4],EDX
+155,9B,2,3,3,[EBX*4],EBX
+156,9C,2,3,4,[EBX*4],ESP
+157,9D,2,3,5,[EBX*4],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+158,9E,2,3,6,[EBX*4],ESI
+159,9F,2,3,7,[EBX*4],EDI
+160,A0,2,4,0,,EAX
+161,A1,2,4,1,,ECX
+162,A2,2,4,2,,EDX
+163,A3,2,4,3,,EBX
+164,A4,2,4,4,,ESP
+165,A5,2,4,5,,"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+166,A6,2,4,6,,ESI
+167,A7,2,4,7,,EDI
+168,A8,2,5,0,[EBP*4],EAX
+169,A9,2,5,1,[EBP*4],ECX
+170,AA,2,5,2,[EBP*4],EDX
+171,AB,2,5,3,[EBP*4],EBX
+172,AC,2,5,4,[EBP*4],ESP
+173,AD,2,5,5,[EBP*4],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+174,AE,2,5,6,[EBP*4],ESI
+175,AF,2,5,7,[EBP*4],EDI
+176,B0,2,6,0,[ESI*4],EAX
+177,B1,2,6,1,[ESI*4],ECX
+178,B2,2,6,2,[ESI*4],EDX
+179,B3,2,6,3,[ESI*4],EBX
+180,B4,2,6,4,[ESI*4],ESP
+181,B5,2,6,5,[ESI*4],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+182,B6,2,6,6,[ESI*4],ESI
+183,B7,2,6,7,[ESI*4],EDI
+184,B8,2,7,0,[EDI*4],EAX
+185,B9,2,7,1,[EDI*4],ECX
+186,BA,2,7,2,[EDI*4],EDX
+187,BB,2,7,3,[EDI*4],EBX
+188,BC,2,7,4,[EDI*4],ESP
+189,BD,2,7,5,[EDI*4],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+190,BE,2,7,6,[EDI*4],ESI
+191,BF,2,7,7,[EDI*4],EDI
+192,C0,3,0,0,[EAX*8],EAX
+193,C1,3,0,1,[EAX*8],ECX
+194,C2,3,0,2,[EAX*8],EDX
+195,C3,3,0,3,[EAX*8],EBX
+196,C4,3,0,4,[EAX*8],ESP
+197,C5,3,0,5,[EAX*8],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+198,C6,3,0,6,[EAX*8],ESI
+199,C7,3,0,7,[EAX*8],EDI
+200,C8,3,1,0,[ECX*8],EAX
+201,C9,3,1,1,[ECX*8],ECX
+202,CA,3,1,2,[ECX*8],EDX
+203,CB,3,1,3,[ECX*8],EBX
+204,CC,3,1,4,[ECX*8],ESP
+205,CD,3,1,5,[ECX*8],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+206,CE,3,1,6,[ECX*8],ESI
+207,CF,3,1,7,[ECX*8],EDI
+208,D0,3,2,0,[EDX*8],EAX
+209,D1,3,2,1,[EDX*8],ECX
+210,D2,3,2,2,[EDX*8],EDX
+211,D3,3,2,3,[EDX*8],EBX
+212,D4,3,2,4,[EDX*8],ESP
+213,D5,3,2,5,[EDX*8],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+214,D6,3,2,6,[EDX*8],ESI
+215,D7,3,2,7,[EDX*8],EDI
+216,D8,3,3,0,[EBX*8],EAX
+217,D9,3,3,1,[EBX*8],ECX
+218,DA,3,3,2,[EBX*8],EDX
+219,DB,3,3,3,[EBX*8],EBX
+220,DC,3,3,4,[EBX*8],ESP
+221,DD,3,3,5,[EBX*8],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+222,DE,3,3,6,[EBX*8],ESI
+223,DF,3,3,7,[EBX*8],EDI
+224,E0,3,4,0,,EAX
+225,E1,3,4,1,,ECX
+226,E2,3,4,2,,EDX
+227,E3,3,4,3,,EBX
+228,E4,3,4,4,,ESP
+229,E5,3,4,5,,"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+230,E6,3,4,6,,ESI
+231,E7,3,4,7,,EDI
+232,E8,3,5,0,[EBP*8],EAX
+233,E9,3,5,1,[EBP*8],ECX
+234,EA,3,5,2,[EBP*8],EDX
+235,EB,3,5,3,[EBP*8],EBX
+236,EC,3,5,4,[EBP*8],ESP
+237,ED,3,5,5,[EBP*8],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+238,EE,3,5,6,[EBP*8],ESI
+239,EF,3,5,7,[EBP*8],EDI
+240,F0,3,6,0,[ESI*8],EAX
+241,F1,3,6,1,[ESI*8],ECX
+242,F2,3,6,2,[ESI*8],EDX
+243,F3,3,6,3,[ESI*8],EBX
+244,F4,3,6,4,[ESI*8],ESP
+245,F5,3,6,5,[ESI*8],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+246,F6,3,6,6,[ESI*8],ESI
+247,F7,3,6,7,[ESI*8],EDI
+248,F8,3,7,0,[EDI*8],EAX
+249,F9,3,7,1,[EDI*8],ECX
+250,FA,3,7,2,[EDI*8],EDX
+251,FB,3,7,3,[EDI*8],EBX
+252,FC,3,7,4,[EDI*8],ESP
+253,FD,3,7,5,[EDI*8],"A disp32 with no base if the MOD is 00B. Otherwise, [*] means disp8 or disp32 + [EBP]. See Table 2-3."
+254,FE,3,7,6,[EDI*8],ESI
+255,FF,3,7,7,[EDI*8],EDI

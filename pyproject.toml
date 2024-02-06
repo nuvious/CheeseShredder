@@ -1,0 +1,54 @@
+[project]
+name = "cheeseshredder"  # Required
+version = "0.0.0"  # Required
+description = "A binrary disassembler for x86_64 instructions."
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE.txt"}
+keywords = [
+  "disassembler", "reverse engineering", "re", "x86", "x86_64", "amd64"
+]
+authors = [
+  {name = "David Cheeseman", email = "david@cheeseman.club" }
+]
+maintainers = [
+  {name = "David Cheeseman", email = "david@cheeseman.club" }
+]
+# https://pypi.org/classifiers/
+classifiers = [  # Optional
+  "Development Status :: 3 - Alpha",
+  "Topic :: Security",
+  "License :: OSI Approved :: Apache Software License",
+  "Topic :: Software Development :: Disassemblers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+  "peppercorn"
+]
+
+[project.optional-dependencies] # Optional
+dev = ["jupyterlab"]
+test = ["pytest", "flake8"]
+
+[project.urls]  # Optional
+"Homepage" = "https://github.com/nuvious/cheeseshredder"
+"Bug Reports" = "https://github.com/nuvious/cheeseshredder/issues"
+"Funding" = "https://donate.pypi.org"
+"Say Thanks!" = "http://saythanks.io/to/example"
+"Source" = "https://github.com/nuvious/cheeseshredder/"
+
+[project.scripts]  # Optional
+cheeseshredder = "cheeseshredder.__main__:main"
+
+[tool.setuptools]
+package-data = {"tables" = ["*.csv"]}
+
+[build-system]
+requires = ["setuptools>=43.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
