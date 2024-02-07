@@ -18,3 +18,7 @@ def test_load_sib_table():
     """
     sibs = cheeseshredder.arch.x86_64.get_sib_table()
     assert len(sibs) == 256
+
+def test_load_instruction_table():
+    instruction_table = cheeseshredder.arch.x86_64.get_instruction_table()
+    print(instruction_table)
