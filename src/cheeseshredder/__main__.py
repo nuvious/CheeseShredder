@@ -11,4 +11,8 @@ def main():
     # parser.add_argument('-a', '--arch') # Reserved for multi-arch feature
     parser.add_argument('-v', '--verbose', action='store_false')
     args = parser.parse_args()  
-    print(cheeseshredder.arch.x86_64.get_sib_table())
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    with open(args.input, 'rb') as f:
+        instructions, unparsed_bytes = disassembler.disassemble(f.read())
+        for address, instruction, parsed_bytes in instructions:
+            print(f"{address}: {parsed_bytes.hex()}\t{instruction}")

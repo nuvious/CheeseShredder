@@ -17,7 +17,7 @@ def test_dummy_disassembler():
     """Simple smoke-test that the basic base workflow of the disassembler is working.
     """
     disassembler = cheeseshredder.base.Disassember()
-    with open(POSITIVE_TESTS[0], 'rb') as f:
+    with open(POSITIVE_TESTS[0][0], 'rb') as f:
         program_bytes = f.read()
         _, _ = disassembler.disassemble(program_bytes)
 

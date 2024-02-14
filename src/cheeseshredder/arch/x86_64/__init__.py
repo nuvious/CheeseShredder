@@ -1,4 +1,5 @@
 import csv
+import copy
 from importlib import resources
 
 from . import data
@@ -13,6 +14,27 @@ _SIB_TABLE_CSV_FNAME = "SIBTable.csv"
 SIB_TABLE = None
 _PREFIXES_CSV_FNAME = "Prefixes.csv"
 PREFIXES = None
+INVALID_ADDRESSING_MODES = [
+    "r16",
+    "r64",
+    "r/m16",
+    "r/m64",
+    "xmm",
+    "ymm"
+]
+INVALID_VALID_ADDRESS_MODE = \
+    lambda inst_str: any([ i in inst_str for i in INVALID_ADDRESSING_MODES])
+
+REGISTERS = [
+    "eax",
+    "ecx",
+    "edx",
+    "ebx",
+    "esp",
+    "ebp",
+    "esi",
+    "edi"
+]
 
 def _try_parse_hex(raw_str):
     """Tries to parse a string into bytes from hex and if it fails returns the string.
@@ -21,14 +43,24 @@ def _try_parse_hex(raw_str):
         raw_str (str): A hex string
 
     Returns:
-        bytes or str: The parsed bytes or the string if it could not be parsed from hex.
+        bytes, tuple of bytes or str:
+            The parsed bytes or the string if it could not be parsed from hex.
     """
     try:
-        if len(raw_str) != 2:
-            return raw_str
-        return bytes.fromhex(raw_str)[0]
+        try:
+            return bytes.fromhex(raw_str)[0]
+        except:
+            opcodes = []
+            if raw_str.endswith("+rd") or raw_str.endswith("+rw"):
+                opcode = int(raw_str[:2], 16)
+                for i, _ in enumerate(REGISTERS):
+                    opcodes.append(opcode + i)
+                return tuple(opcodes)
+            else:
+                return raw_str
     except:
-        return raw_str
+        print(raw_str)
+        raise
 
 def get_prefix_table():
     global PREFIXES
@@ -79,6 +111,8 @@ def get_instruction_table():
         with instruction_table_file.open("r", encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
             for row in reader:
+                if INVALID_VALID_ADDRESS_MODE(row["Instruction"]):
+                    continue
                 instruction = X86_64Instruction.instruction_from_row(row)
                 INSTRUCTION_TABLE[(instruction.opcode, instruction.operands)] = instruction
     return INSTRUCTION_TABLE
@@ -179,22 +213,27 @@ class X86_64Instruction(Instruction):
                 else:
                     # Sinkhole for string opcode identifiers that aren't implemented
                     return 0
+            elif type(b) is tuple:
+                if instruction_bytes[byte_pos] not in b:
+                    return 0
             else:
                 if b != instruction_bytes[byte_pos]:
                     return 0
-                else:
-                    print("Hi")
             byte_pos += 1
         # If we parse successfull 
         if byte_pos == len(instruction_bytes):
             return 2
         else:
             return 1
+    
+    def __str__(self):
+        return f"{self.mnemonic} {self.operands}"
 
     def __init__(self, *arg, **kwargs):
         self.prefix = None
         self.opcode = None
         self.operands = None
+        self.mnemonic = None
         self.parsed_operands = None
         self.no_prefixes = False
         self.sib = None
@@ -206,3 +245,6 @@ get_sib_table()
 get_modrm_mapping()
 get_prefix_table()
 get_instruction_table()
+
+if __name__ == "__main__":
+    print(INSTRUCTION_TABLE)
