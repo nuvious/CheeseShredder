@@ -3,4 +3,4 @@
 	url = https://github.com/Kashio/x86reference.git
 [submodule "x86-csv"]
 	path = src/cheeseshredder/arch/x86_64/data/x86-csv
-	url = https://github.com/GregoryComer/x86-csv.git
+	url = git@github.com:nuvious/x86-csv.git
