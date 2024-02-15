@@ -137,7 +137,7 @@ def get_instruction_table():
 
 
 class X86_64Disassembler(Disassember):
-    def next_instruction(self, program_bytes, max_unparsed_bytes=12):
+    def next_instruction(self, program_bytes, max_unparsed_bytes=20):
         byte_count = 1
         possible_instructions = {}
         partial_instructions = {}
@@ -242,26 +242,20 @@ class X86_64Instruction(Instruction):
                             return 0
                     self.parsed_operands.append(mod_rm_entry)
                     
-                    if mod_rm_entry['Effective Address'] == '[--][--]':
+                    if '[--][--]' in mod_rm_entry['Effective Address']:
                         byte_pos += 1
                         if byte_pos < len(instruction_bytes):
                             sib_entry = SIB_TABLE[instruction_bytes[byte_pos]]
                             self.parsed_operands.append(sib_entry)
-                        else:
-                            return 1
-                    elif mod_rm_entry['Effective Address'] == '[--][--]+disp8':
-                        byte_pos += 1
-                        if byte_pos < len(instruction_bytes):
-                            sib_entry = SIB_TABLE[instruction_bytes[byte_pos]]
-                            self.parsed_operands.append(sib_entry)
-                        else:
-                            return 1
-                    elif mod_rm_entry['Effective Address'] == '[--][--]+disp32':
-                        byte_pos += 1
-                        if byte_pos < len(instruction_bytes):
-                            sib_entry = SIB_TABLE[instruction_bytes[byte_pos]]
-                            self.parsed_operands.append(sib_entry)
-                            # byte_pos += 4
+                            if sib_entry['r32'].startswith('A disp32 with'):
+                                ## TODO: Figure out this SIB stuff.
+                                ## Current instruction of interest is 8104853333333378563412
+                                if mod_rm_entry['MOD'] == 0:
+                                    byte_pos += 8
+                                elif mod_rm_entry['MOD'] == 1:
+                                    byte_pos += 1
+                                elif mod_rm_entry['MOD'] == 2:
+                                    byte_pos += 8
                         else:
                             return 1
 
@@ -272,6 +266,7 @@ class X86_64Instruction(Instruction):
                     else:
                         byte_pos += 1
                     continue
+                
                 elif b in ['cd', 'id']: # imm32
                     if byte_pos + 4 > len(instruction_bytes):
                         return 1
