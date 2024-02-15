@@ -14,16 +14,19 @@ _SIB_TABLE_CSV_FNAME = "SIBTable.csv"
 SIB_TABLE = None
 _PREFIXES_CSV_FNAME = "Prefixes.csv"
 PREFIXES = None
-INVALID_ADDRESSING_MODES = [
+UNIMPLEMENTED_INSTRUCTION_TOKENS = [
     "r16",
     "r64",
     "r/m16",
     "r/m64",
     "xmm",
-    "ymm"
+    "ymm",
+    "ST(i)",
+    "ST(0)",
+    "rel16"
 ]
-INVALID_VALID_ADDRESS_MODE = \
-    lambda inst_str: any([ i in inst_str for i in INVALID_ADDRESSING_MODES])
+CONTAINS_INVALID_INSTRUCTION_TOKENS = \
+    lambda inst_str: any([ i in inst_str for i in UNIMPLEMENTED_INSTRUCTION_TOKENS])
 
 REGISTERS = [
     "eax",
@@ -35,6 +38,13 @@ REGISTERS = [
     "esi",
     "edi"
 ]
+UNIMPLEMENTED_OPERANDS = [
+    "REX.W",
+    "REX",
+    "VEX"
+]
+CONTAINS_UNIMPLEMENTED_OPERANDS = \
+    lambda inst_str: any([ i in inst_str for i in UNIMPLEMENTED_OPERANDS])
 
 def _try_parse_hex(raw_str):
     """Tries to parse a string into bytes from hex and if it fails returns the string.
@@ -46,12 +56,16 @@ def _try_parse_hex(raw_str):
         bytes, tuple of bytes or str:
             The parsed bytes or the string if it could not be parsed from hex.
     """
+    if raw_str == 'cd': # Edge case for cd operand. All hex should be upper case
+        return raw_str
     try:
         try:
             return bytes.fromhex(raw_str)[0]
         except:
             opcodes = []
-            if raw_str.endswith("+rd") or raw_str.endswith("+rw"):
+            if raw_str.endswith("+rd") or \
+                raw_str.endswith("+rw") or \
+                raw_str.endswith("+rb"):
                 opcode = int(raw_str[:2], 16)
                 for i, _ in enumerate(REGISTERS):
                     opcodes.append(opcode + i)
@@ -111,7 +125,8 @@ def get_instruction_table():
         with instruction_table_file.open("r", encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if INVALID_VALID_ADDRESS_MODE(row["Instruction"]):
+                if CONTAINS_INVALID_INSTRUCTION_TOKENS(row["Instruction"]) or \
+                    CONTAINS_UNIMPLEMENTED_OPERANDS(row["Opcode"]):
                     continue
                 instruction = X86_64Instruction.instruction_from_row(row)
                 INSTRUCTION_TABLE[(instruction.opcode, instruction.operands)] = instruction
@@ -119,7 +134,7 @@ def get_instruction_table():
 
 
 class X86_64Disassembler(Disassember):
-    def next_instruction(self, program_bytes, max_unparsed_bytes=4):
+    def next_instruction(self, program_bytes, max_unparsed_bytes=8):
         byte_count = 1
         possible_instructions = {}
         partial_instructions = {}
@@ -129,7 +144,7 @@ class X86_64Disassembler(Disassember):
                 possible_instructions[k] = i
             if result == 1:
                 partial_instructions[k] = i
-        last_instruction_set = None
+        last_instruction_set = {}
         while (
                 byte_count < max_unparsed_bytes and
                 (
@@ -141,8 +156,9 @@ class X86_64Disassembler(Disassember):
             byte_count += 1
             # Clear partial instruction tracker
             partial_instructions = {}
-            last_instruction_set = possible_instructions
-            for k, i in possible_instructions.items():
+            last_instruction_set = copy.deepcopy(possible_instructions)
+            possible_instructions = {}
+            for k, i in last_instruction_set.items():
                 result = i.is_valid(program_bytes[:byte_count])
                 if result != 0:
                     possible_instructions[k] = i
@@ -152,10 +168,24 @@ class X86_64Disassembler(Disassember):
             return (
                 program_bytes[byte_count:],
                 program_bytes[:byte_count],
-                list(possible_instructions.values())[0]
+                copy.deepcopy(list(possible_instructions.values())[0])
             )
         else:
-            return program_bytes[1:], program_bytes[:1], None
+            if len(last_instruction_set) > 1:
+                # In some cases instructions are synonymous such as JE and JZ. Check to see if the descriptions match.
+                desc = None
+                for k, i in last_instruction_set.items():
+                    if desc is None:
+                        desc = i.description
+                    elif desc != i.description:
+                        return program_bytes[1:], program_bytes[:1], None
+                return (
+                    program_bytes[byte_count:],
+                    program_bytes[:byte_count],
+                    copy.deepcopy(list(last_instruction_set.values())[0])
+                )
+            else:
+                return program_bytes[1:], program_bytes[:1], None
 
 class X86_64Instruction(Instruction):
     def instruction_from_row(row):
@@ -178,7 +208,8 @@ class X86_64Instruction(Instruction):
             "mnemonic": row["Instruction"].split(" ")[0],
             "opcode": opcodes,
             "operands": operands,
-            "no_prefixes": no_prefixes
+            "no_prefixes": no_prefixes,
+            "description": row["Description"]
         }
         return X86_64Instruction(**kwargs)
 
@@ -198,21 +229,33 @@ class X86_64Instruction(Instruction):
             if byte_pos >= len(instruction_bytes):
                 return 1 # If we've gotten this far, we have a partial match
             if type(b) is str:
-                if b == '/r':
-                    for operand in self.operands:
-                        if operand:
-                            if "ModRM:r/m (r, w)" in operand:
-                                # The ModRM byte refers to the source and destination, we're done
-                                self.parsed_operands.append(MODRM_TABLE["32"][instruction_bytes[byte_pos]])
-                                return 2
-                            else:
-                                return 0 # TODO: Implement parsing other operands
-                        else:
-                            return 2 # Once we've run out of operands, call it good
-                    return 2
+                if b in ['/r', '/0', '/1', '/2', '/3', '/4', '/5', '/6', '/7']:
+                    mod_rm_entry = MODRM_TABLE["32"][instruction_bytes[byte_pos]]
+                    if b != '/r':
+                        if not b.endswith(mod_rm_entry['/digit']):
+                            return 0
+                    self.parsed_operands.append(mod_rm_entry)
+                    if mod_rm_entry['Effective Address'].endswith("disp32"):
+                        byte_pos += 5
+                    elif mod_rm_entry['Effective Address'].endswith("disp8"):
+                        byte_pos += 2
+                    else:
+                        byte_pos += 1
+                    continue
+                elif b in ['cd', 'id']: # imm32
+                    if byte_pos + 4 > len(instruction_bytes):
+                        return 1
+                    byte_pos += 4
+                    continue
+                elif b in ['cw', 'iw']: # imm16
+                    if byte_pos + 2 > len(instruction_bytes):
+                        return 1
+                    byte_pos += 2
+                    continue
+                elif b in  ['cb', 'ib']: # imm8
+                    continue
                 else:
-                    # Sinkhole for string opcode identifiers that aren't implemented
-                    return 0
+                    raise Exception(f"Operand {b} not implemented!")
             elif type(b) is tuple:
                 if instruction_bytes[byte_pos] not in b:
                     return 0
@@ -235,6 +278,7 @@ class X86_64Instruction(Instruction):
         self.operands = None
         self.mnemonic = None
         self.parsed_operands = None
+        self.description = None
         self.no_prefixes = False
         self.sib = None
         self.displacement = None

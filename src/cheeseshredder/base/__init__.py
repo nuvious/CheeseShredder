@@ -37,13 +37,16 @@ class Disassember():
     def disassemble(self, program_bytes, *args, **kwargs):
         instructions = []
         unparsed_bytes = []
+        in_order_parse = []
         address = 0x00
         while len(program_bytes):
             address_hex = "%08X" % address
             program_bytes, parsed_bytes, instruction = self.next_instruction(program_bytes)
             if instruction:
-                instructions.append((address_hex,instruction,parsed_bytes))
+                instructions.append((address_hex,instruction, parsed_bytes))
+                in_order_parse.append((address_hex,instruction, parsed_bytes))
             else:
-                unparsed_bytes.append((address_hex, parsed_bytes.hex()))
+                unparsed_bytes.append((address_hex, parsed_bytes))
+                in_order_parse.append((address_hex, None, parsed_bytes))
             address += len(parsed_bytes)
-        return instructions, unparsed_bytes
+        return instructions, unparsed_bytes, in_order_parse

@@ -27,8 +27,21 @@ def test_nop():
     instructions, unparsed_bytes = disassembler.disassemble(program_bytes)
     assert len(unparsed_bytes) == 0
 
-def test_initial():
-    program_bytes = b'1\xc0\x01\xc8\x01\xd0U\x89\xe5RQ\xb8DCBA\x8b\x95\x08\x00\x00\x00\x8b\x8d\x0c\x00\x00\x00\x01\xd1\x89\xc8ZY]\xc2\x08\x00'
+def test_example_1():
     disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
-    instructions, unparsed_bytes = disassembler.disassemble(program_bytes)
-    assert len(unparsed_bytes) == 0
+    with open(os.path.join(TEST_FILE_DIR, 'positive/example1'), 'rb') as f:
+        instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(f.read())
+        assert len(unparsed_bytes) == 0
+
+def test_example_2():
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    with open(os.path.join(TEST_FILE_DIR, 'positive/example2'), 'rb') as f:
+        instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(f.read())
+        assert len(unparsed_bytes) == 0
+
+
+def test_example_3():
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    with open(os.path.join(TEST_FILE_DIR, 'positive/example3'), 'rb') as f:
+        instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(f.read())
+        assert len(unparsed_bytes) == 0
