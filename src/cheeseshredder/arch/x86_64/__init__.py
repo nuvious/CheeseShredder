@@ -56,7 +56,7 @@ def _try_parse_hex(raw_str):
         bytes, tuple of bytes or str:
             The parsed bytes or the string if it could not be parsed from hex.
     """
-    if raw_str == 'cd': # Edge case for cd operand. All hex should be upper case
+    if raw_str in ['cb', 'cd']: # Edge case for cb/cd operand. All hex should be upper case
         return raw_str
     try:
         try:
@@ -232,6 +232,8 @@ class X86_64Instruction(Instruction):
                 if b in ['/r', '/0', '/1', '/2', '/3', '/4', '/5', '/6', '/7']:
                     mod_rm_entry = MODRM_TABLE["32"][instruction_bytes[byte_pos]]
                     if b != '/r':
+                        if len(mod_rm_entry['/digit']) == 0:
+                            return 0
                         if not b.endswith(mod_rm_entry['/digit']):
                             return 0
                     self.parsed_operands.append(mod_rm_entry)
@@ -253,6 +255,7 @@ class X86_64Instruction(Instruction):
                     byte_pos += 2
                     continue
                 elif b in  ['cb', 'ib']: # imm8
+                    byte_pos += 1
                     continue
                 else:
                     raise Exception(f"Operand {b} not implemented!")
