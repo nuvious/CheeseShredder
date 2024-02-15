@@ -137,7 +137,7 @@ def get_instruction_table():
 
 
 class X86_64Disassembler(Disassember):
-    def next_instruction(self, program_bytes, max_unparsed_bytes=10):
+    def next_instruction(self, program_bytes, max_unparsed_bytes=12):
         byte_count = 1
         possible_instructions = {}
         partial_instructions = {}
@@ -242,11 +242,26 @@ class X86_64Instruction(Instruction):
                             return 0
                     self.parsed_operands.append(mod_rm_entry)
                     
-                    if '[--][--]' in mod_rm_entry['Effective Address']:
+                    if mod_rm_entry['Effective Address'] == '[--][--]':
                         byte_pos += 1
                         if byte_pos < len(instruction_bytes):
                             sib_entry = SIB_TABLE[instruction_bytes[byte_pos]]
-                            byte_pos += 1
+                            self.parsed_operands.append(sib_entry)
+                        else:
+                            return 1
+                    elif mod_rm_entry['Effective Address'] == '[--][--]+disp8':
+                        byte_pos += 1
+                        if byte_pos < len(instruction_bytes):
+                            sib_entry = SIB_TABLE[instruction_bytes[byte_pos]]
+                            self.parsed_operands.append(sib_entry)
+                        else:
+                            return 1
+                    elif mod_rm_entry['Effective Address'] == '[--][--]+disp32':
+                        byte_pos += 1
+                        if byte_pos < len(instruction_bytes):
+                            sib_entry = SIB_TABLE[instruction_bytes[byte_pos]]
+                            self.parsed_operands.append(sib_entry)
+                            # byte_pos += 4
                         else:
                             return 1
 
