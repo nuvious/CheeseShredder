@@ -19,12 +19,12 @@ def test_dummy_disassembler():
     disassembler = cheeseshredder.base.Disassember()
     with open(POSITIVE_TESTS[0][0], 'rb') as f:
         program_bytes = f.read()
-        _, _ = disassembler.disassemble(program_bytes)
+        _, _, _ = disassembler.disassemble(program_bytes)
 
 def test_nop():
     program_bytes = b'\x90'
     disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
-    instructions, unparsed_bytes = disassembler.disassemble(program_bytes)
+    instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
     assert len(unparsed_bytes) == 0
 
 def test_example_1():
@@ -43,5 +43,17 @@ def test_example_2():
 def test_example_3():
     disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
     with open(os.path.join(TEST_FILE_DIR, 'positive/example3'), 'rb') as f:
+        instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(f.read()[:14])
+        assert len(unparsed_bytes) == 0
+
+def test_example_office():
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    with open(os.path.join(TEST_FILE_DIR, 'positive/example-office'), 'rb') as f:
+        instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(f.read())
+        assert len(unparsed_bytes) == 0
+
+def test_example_large():
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    with open(os.path.join(TEST_FILE_DIR, 'positive/large_example'), 'rb') as f:
         instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(f.read())
         assert len(unparsed_bytes) == 0

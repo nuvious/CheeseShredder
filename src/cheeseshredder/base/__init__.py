@@ -1,4 +1,5 @@
 import warnings
+import tqdm
 
 class ModelBase:
     def __str__(self):
@@ -39,9 +40,12 @@ class Disassember():
         unparsed_bytes = []
         in_order_parse = []
         address = 0x00
+        initial_program_bytes = program_bytes[:]
+        progress = None if kwargs.get('progress', False) else tqdm.tqdm(total=len(program_bytes))
         while len(program_bytes):
             address_hex = "%08X" % address
             program_bytes, parsed_bytes, instruction = self.next_instruction(program_bytes)
+            print(f"{address}: {parsed_bytes.hex()}\t{instruction}")
             if instruction:
                 instructions.append((address_hex,instruction, parsed_bytes))
                 in_order_parse.append((address_hex,instruction, parsed_bytes))
@@ -49,4 +53,6 @@ class Disassember():
                 unparsed_bytes.append((address_hex, parsed_bytes))
                 in_order_parse.append((address_hex, None, parsed_bytes))
             address += len(parsed_bytes)
+            progress.update(len(parsed_bytes))
+            # print(len(program_bytes))
         return instructions, unparsed_bytes, in_order_parse

@@ -23,7 +23,10 @@ UNIMPLEMENTED_INSTRUCTION_TOKENS = [
     "ymm",
     "ST(i)",
     "ST(0)",
-    "rel16"
+    "rel16",
+    " AX, ",
+    " AL, ",
+    "XCHG"
 ]
 CONTAINS_INVALID_INSTRUCTION_TOKENS = \
     lambda inst_str: any([ i in inst_str for i in UNIMPLEMENTED_INSTRUCTION_TOKENS])
@@ -134,7 +137,7 @@ def get_instruction_table():
 
 
 class X86_64Disassembler(Disassember):
-    def next_instruction(self, program_bytes, max_unparsed_bytes=8):
+    def next_instruction(self, program_bytes, max_unparsed_bytes=10):
         byte_count = 1
         possible_instructions = {}
         partial_instructions = {}
@@ -185,7 +188,8 @@ class X86_64Disassembler(Disassember):
                     copy.deepcopy(list(last_instruction_set.values())[0])
                 )
             else:
-                return program_bytes[1:], program_bytes[:1], None
+                raise Exception(f"Unparsed instrution with bytes {program_bytes[:byte_count]}")
+                # return program_bytes[1:], program_bytes[:1], None
 
 class X86_64Instruction(Instruction):
     def instruction_from_row(row):
@@ -237,6 +241,15 @@ class X86_64Instruction(Instruction):
                         if not b.endswith(mod_rm_entry['/digit']):
                             return 0
                     self.parsed_operands.append(mod_rm_entry)
+                    
+                    if '[--][--]' in mod_rm_entry['Effective Address']:
+                        byte_pos += 1
+                        if byte_pos < len(instruction_bytes):
+                            sib_entry = SIB_TABLE[instruction_bytes[byte_pos]]
+                            byte_pos += 1
+                        else:
+                            return 1
+
                     if mod_rm_entry['Effective Address'].endswith("disp32"):
                         byte_pos += 5
                     elif mod_rm_entry['Effective Address'].endswith("disp8"):
