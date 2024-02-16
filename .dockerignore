@@ -1,0 +1,4 @@
+*.pdf
+x86reference/
+Dockerfile
+.*

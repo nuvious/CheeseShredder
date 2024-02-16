@@ -9,7 +9,7 @@ from ...base import Instruction, Disassember
 
 _log = logging.getLogger(__name__)
 
-_X86_64_INSTRUCTION_TABLE_CSV_FNAME = "x86-csv/x86.csv"
+_X86_64_INSTRUCTION_TABLE_CSV_FNAME = "x86.csv"
 _INSTRUCTION_TABLE = None
 _MODRM_32_TABLE_CSV_FNAME = "ModRMTable32.csv"
 _MODRM_16_TABLE_CSV_FNAME = "ModRMTable16.csv"

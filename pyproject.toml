@@ -3,7 +3,7 @@ name = "cheeseshredder"  # Required
 version = "0.0.0"  # Required
 description = "A binrary disassembler for x86_64 instructions."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.11"
 license = {file = "LICENSE.txt"}
 keywords = [
   "disassembler", "reverse engineering", "re", "x86", "x86_64", "amd64"
@@ -21,15 +21,11 @@ classifiers = [  # Optional
   "License :: OSI Approved :: Apache Software License",
   "Topic :: Software Development :: Disassemblers",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = [
-  "peppercorn"
+  "tqdm"
 ]
 
 [project.optional-dependencies] # Optional
@@ -47,8 +43,19 @@ test = ["pytest", "flake8"]
 cheeseshredder = "cheeseshredder.__main__:main"
 
 [tool.setuptools]
-package-data = {"tables" = ["*.csv"]}
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["cheeseshredder*"]  # alternatively: `exclude = ["additional*"]`
+namespaces = false
+
+[tool.setuptools.package-data]
+'*' = ["*.csv"]
 
 [build-system]
-requires = ["setuptools>=43.0.0", "wheel"]
+requires = [
+    "setuptools>=60",
+    "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
