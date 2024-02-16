@@ -133,14 +133,17 @@ class ModRM:
             reg = self.effective_address[1:4].lower()
             return f"{reg},{reg}"
         elif self.effective_address == '[--][--]':
-            if self.mod == 0:
-                return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}+IMM32],{self.reg}"
-            elif self.mod == 1:
-                return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}+IMM8+ebp],{self.reg}"
-            elif self.mod == 2:
-                return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}+IMM32+ebp],{self.reg}"
+            if self.sib_entry["Base"] == '5': # 101
+                if self.mod == 0:
+                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}+IMM32],{self.reg}"
+                elif self.mod == 1:
+                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}+IMM8+ebp],{self.reg}"
+                elif self.mod == 2:
+                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}+IMM32+ebp],{self.reg}"
+                else:
+                    raise ValueError("There is no legal SIB state with mod bits set to 11.")
             else:
-                raise ValueError("There is no legal SIB state with mod bits set to 11.")
+                return f"{self.reg}, [{self.sib_entry['r32'].lower()}+{self.sib_entry['Scaled Index'][1:-1].lower()}]"
         elif self.effective_address == 'disp32':
             return "IMM32"
         elif re.match(self.DISP8_REGISTER_MODRM_PATTERN, self.effective_address):
@@ -148,7 +151,7 @@ class ModRM:
         elif re.match(self.DISP32_REGISTER_MODRM_PATTERN, self.effective_address):
             return f"{self.reg},[{self.effective_address[1:4].lower()}+IMM32]"
         else:
-            raise NotImplementedError()
+            return f"ILLEGAL INSTRUCTION {str(self.__dict__)}"
                 
 def get_modrm_mapping():
     global _MODRM_TABLE
@@ -306,38 +309,45 @@ class X86_64Instruction(Instruction):
         # If we parse successfull 
         if byte_pos == len(instruction_bytes):
             self.instruction_bytes = instruction_bytes[:]
-            if self.mnemonic.startswith("J"):
+            if self.mnemonic.startswith("J") and type(self.parsed_operands[-1]) is bytes:
                 self.jump_offset = int.from_bytes(self.parsed_operands[-1], signed=True) + len(instruction_bytes)
             return 2
         else:
             return 1
     
     def format(self, instruction_bytes, address):
-        instruction_str = f"{instruction_bytes.hex().upper()} {self.mnemonic.lower()} "
-        operand_count = 0
-        if self.opcode_encoding_with_register:
-            index = self.opcode[0].index(instruction_bytes[0])
-            instruction_str += _REGISTERS[index].lower()
-            operand_count += 1
-        for operand in self.parsed_operands:
-            if type(operand) is ModRM:
-                operand_str = str(operand)
-                if len(instruction_bytes) > 4:
-                    operand_str = operand_str.replace("IMM32", f"0x{instruction_bytes[-4:][::-1].hex().lower()}")
-                if len(instruction_bytes) > 1:
-                    operand_str = operand_str.replace("IMM8", f"0x{'%08x' % instruction_bytes[-1]}")
-                instruction_str += f"{operand_str},"
-            elif type(operand) is bytes:
-                if self.mnemonic.startswith("J"):
-                    # Sepcial handling for jumps
-                    jump_addr = '%08x' % (self.jump_offset + address)
-                    encoded_operand = f"offset_{jump_addr}h"
-                else:
-                    encoded_operand = f"0x{operand[::-1].hex().upper()}"
-                instruction_str += encoded_operand if operand_count == 0 else f",{encoded_operand}"
-            operand_count += 1
-        instruction_str = instruction_str[:-1] if instruction_str.endswith(",") else instruction_str
-        return instruction_str.strip()
+        try:
+            instruction_str = f"{instruction_bytes.hex().upper()} {self.mnemonic.lower()} "
+            operand_count = 0
+            if self.opcode_encoding_with_register:
+                # Sometimes these instructions have prefixes like 0FC8+rd for BSWAP, so we have to loop through all
+                # opcodes and append.
+                for i, o in enumerate(self.opcode):
+                    if type(o) is tuple:
+                        index = o.index(instruction_bytes[i])
+                        instruction_str += _REGISTERS[index].lower()
+                        operand_count += 1
+            for operand in self.parsed_operands:
+                if type(operand) is ModRM:
+                    operand_str = str(operand)
+                    if len(instruction_bytes) > 4:
+                        operand_str = operand_str.replace("IMM32", f"0x{instruction_bytes[-4:][::-1].hex().lower()}")
+                    if len(instruction_bytes) > 1:
+                        operand_str = operand_str.replace("IMM8", f"0x{'%08x' % instruction_bytes[-1]}")
+                    instruction_str += f"{operand_str},"
+                elif type(operand) is bytes:
+                    if self.mnemonic.startswith("J"):
+                        # Sepcial handling for jumps
+                        jump_addr = '%08x' % (self.jump_offset + address)
+                        encoded_operand = f"offset_{jump_addr}h"
+                    else:
+                        encoded_operand = f"0x{operand[::-1].hex().upper()}"
+                    instruction_str += encoded_operand if operand_count == 0 else f",{encoded_operand}"
+                operand_count += 1
+            instruction_str = instruction_str[:-1] if instruction_str.endswith(",") else instruction_str
+            return instruction_str.strip()
+        except:
+            raise Exception(f"This failed: {instruction_bytes.hex()}")
     
     def __str__(self):
         return f"{self.mnemonic} {self.operands}"

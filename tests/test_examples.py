@@ -180,6 +180,15 @@ def test_nop():
     instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
     assert len(unparsed_bytes) == 0
 
+def test_fuzz_hit_00():
+    # BSWAP has a prefix before a register encoded opcode, test ensures these are hanlded properly
+    # 0FCF bswap edi
+    program_bytes = b'\x0f\xcf'
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
+    output = "\n".join(cheeseshredder.format.LabeledFormatter().print_instructions(in_order_parse)).splitlines()
+    assert len(unparsed_bytes) == 0
+
 def test_example_1():
     disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
     with open(os.path.join(TEST_FILE_DIR, 'positive/example1'), 'rb') as f:
