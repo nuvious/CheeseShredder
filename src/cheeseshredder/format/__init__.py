@@ -33,4 +33,4 @@ class LabeledFormatter(BaseFormatter):
                 prefix += f"offset_{'%08x' % address}h:\n"
             if address in pending_function_labels:
                 prefix += f"func_{'%08x' % address}:\n"
-            yield prefix + f"{'%08X' % address}: {None if instruction is None else instruction.format(instruction_bytes, address)}"
+            yield prefix + f"{'%08X' % address}: {f'db {instruction_bytes.hex()}' if instruction is None else instruction.format(instruction_bytes, address)}"

@@ -29,8 +29,7 @@ _UNIMPLEMENTED_INSTRUCTION_TOKENS = [
     "ST(0)",
     "rel16",
     " AX, ",
-    " AL, ",
-    "XCHG"
+    " AL, "
 ]
 _CONTAINS_INVALID_INSTRUCTION_TOKENS = \
     lambda inst_str: any([ i in inst_str for i in _UNIMPLEMENTED_INSTRUCTION_TOKENS])
@@ -341,13 +340,13 @@ class X86_64Instruction(Instruction):
             for operand in self.parsed_operands:
                 if type(operand) is ModRM:
                     operand_str = ""
-                    if operand.effective_address == '[--][--]':
+                    if '[--][--]' in operand.effective_address:
                         if operand.sib_entry["Base"] == '5': # 101
                             if operand.mod == 0:
                                 operand_str =  f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp32],{operand.reg}"
-                            elif self.mod == 1:
+                            elif operand.mod == 1:
                                 operand_str = f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp8+ebp],{operand.reg}"
-                            elif self.mod == 2:
+                            elif operand.mod == 2:
                                 operand_str = f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp32+ebp],{operand.reg}"
                             else:
                                 raise ValueError("There is no legal SIB state with mod bits set to 11.")

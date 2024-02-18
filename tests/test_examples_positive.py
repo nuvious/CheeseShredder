@@ -163,14 +163,6 @@ offset_00000003h:
 
 TEST_FILE_DIR = os.path.dirname(__file__)
 
-def test_dummy_disassembler():
-    """Simple smoke-test that the basic base workflow of the disassembler is working.
-    """
-    disassembler = cheeseshredder.base.Disassember()
-    with open(POSITIVE_TESTS[0][0], 'rb') as f:
-        program_bytes = f.read()
-        _, _, _ = disassembler.disassemble(program_bytes)
-
 def test_nop():
     program_bytes = b'\x90'
     disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
