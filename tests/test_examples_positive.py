@@ -149,7 +149,7 @@ offset_000000b1h:
 000000EA: 0000 add [eax],eax
 000000EC: 0000 add [eax],eax
 000000EE: 0000 add [eax],eax
-000000F0: None""".splitlines()
+000000F0: db 00""".splitlines()
 
 EXAMPLE_OFFICE_OUTPUT = """00000000: 55 push ebp
 00000001: 57 push edi
