@@ -162,13 +162,6 @@ offset_00000003h:
 00000008: EBF9 jmp offset_00000003h""".splitlines()
 
 TEST_FILE_DIR = os.path.dirname(__file__)
-POSITIVE_TESTS = [
-    (f, f"{f}.s") for f in glob.glob(TEST_FILE_DIR + '/positive/*') if not f.endswith('.s')
-]
-NEGATIVE_TESTS = [
-    (f, f"{f}.s") for f in glob.glob(TEST_FILE_DIR + '/negative/*') if not f.endswith('.s')
-]
-ALL_TESTS = POSITIVE_TESTS + NEGATIVE_TESTS
 
 def test_dummy_disassembler():
     """Simple smoke-test that the basic base workflow of the disassembler is working.

@@ -86,9 +86,11 @@ def _try_parse_hex(raw_str):
 def _bytes_to_signed_hex_string(val):
     if type(val) is bytes:
         val = int.from_bytes(val, signed=True)
-    if val < 0:
-        return f"-0x{'%08x' % (-1*val)}".lower()
-    return f"+0x{'%08x' % (val)}".lower()
+        return "0x%08x" % (2**32 + val if val < 0 else val)
+    else: # Single byte
+        val = val if val < 128 else val - 256
+        return "0x%08x" % (2**32 + val if val < 0 else val)
+        
 
 def get_prefix_table():
     global _PREFIXES
@@ -368,9 +370,9 @@ class X86_64Instruction(Instruction):
                     if self.mnemonic == "PUSH":
                         operand_str = operand_str.split(",")[0]
                     if len(instruction_bytes) > 4:
-                        operand_str = operand_str.replace("disp32", f"0x{instruction_bytes[-4:][::-1].hex().lower()}")
+                        operand_str = operand_str.replace("disp32", _bytes_to_signed_hex_string(instruction_bytes[-4:][::-1]))
                     if len(instruction_bytes) > 1:
-                        operand_str = operand_str.replace("disp8", f"0x{'%08x' % instruction_bytes[-1]}".lower())
+                        operand_str = operand_str.replace("disp8", _bytes_to_signed_hex_string(instruction_bytes[-1]))
                     instruction_str += f"{operand_str}"
                 elif type(operand) is bytes:
                     if self.mnemonic.startswith("J"):
