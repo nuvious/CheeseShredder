@@ -83,6 +83,13 @@ def _try_parse_hex(raw_str):
         print(raw_str)
         raise
 
+def _bytes_to_signed_hex_string(val):
+    if type(val) is bytes:
+        val = int.from_bytes(val, signed=True)
+    if val < 0:
+        return f"-0x{'%08x' % (-1*val)}".lower()
+    return f"+0x{'%08x' % (val)}".lower()
+
 def get_prefix_table():
     global _PREFIXES
     if not _PREFIXES:
@@ -131,25 +138,25 @@ class ModRM:
         elif re.match(self.SINGLE_REGISTER_MODRM_PATTERN, self.effective_address):
             # ex [EAX]
             reg = self.effective_address[1:4].lower()
-            return f"{reg},{reg}"
+            return f"{self.reg},{reg}"
         elif self.effective_address == '[--][--]':
             if self.sib_entry["Base"] == '5': # 101
                 if self.mod == 0:
-                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}+IMM32],{self.reg}"
+                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}SIMM32],{self.reg}"
                 elif self.mod == 1:
-                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}+IMM8+ebp],{self.reg}"
+                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}SIMM8+ebp],{self.reg}"
                 elif self.mod == 2:
-                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}+IMM32+ebp],{self.reg}"
+                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}SIMM32+ebp],{self.reg}"
                 else:
                     raise ValueError("There is no legal SIB state with mod bits set to 11.")
             else:
                 return f"{self.reg}, [{self.sib_entry['r32'].lower()}+{self.sib_entry['Scaled Index'][1:-1].lower()}]"
         elif self.effective_address == 'disp32':
-            return "IMM32"
+            return f"{self.reg},IMM32"
         elif re.match(self.DISP8_REGISTER_MODRM_PATTERN, self.effective_address):
-            return f"{self.reg},[{self.effective_address[1:4].lower()}+IMM8]"
+            return f"{self.reg},[{self.effective_address[1:4].lower()}SIMM8]"
         elif re.match(self.DISP32_REGISTER_MODRM_PATTERN, self.effective_address):
-            return f"{self.reg},[{self.effective_address[1:4].lower()}+IMM32]"
+            return f"{self.reg},[{self.effective_address[1:4].lower()}SIMM32]"
         else:
             return f"ILLEGAL INSTRUCTION {str(self.__dict__)}"
                 
@@ -311,6 +318,8 @@ class X86_64Instruction(Instruction):
             self.instruction_bytes = instruction_bytes[:]
             if self.mnemonic.startswith("J") and type(self.parsed_operands[-1]) is bytes:
                 self.jump_offset = int.from_bytes(self.parsed_operands[-1], signed=True) + len(instruction_bytes)
+            elif self.mnemonic == "CALL" and type(self.parsed_operands[-1]) is bytes:
+                self.call_offset = int.from_bytes(self.parsed_operands[-1][::-1], signed=True)
             return 2
         else:
             return 1
@@ -329,19 +338,50 @@ class X86_64Instruction(Instruction):
                         operand_count += 1
             for operand in self.parsed_operands:
                 if type(operand) is ModRM:
-                    operand_str = str(operand)
+                    operand_str = ""
+                    if operand.effective_address == '[--][--]':
+                        if operand.sib_entry["Base"] == '5': # 101
+                            if operand.mod == 0:
+                                operand_str =  f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp32],{operand.reg}"
+                            elif self.mod == 1:
+                                operand_str = f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp8+ebp],{operand.reg}"
+                            elif self.mod == 2:
+                                operand_str = f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp32+ebp],{operand.reg}"
+                            else:
+                                raise ValueError("There is no legal SIB state with mod bits set to 11.")
+                    elif (self.operands[0] and
+                        self.operands[1] and
+                        "ModRM" in self.operands[0] and
+                        "imm" in self.operands[1]):
+                        operand_str = operand.effective_address
+                    elif(self.operands[0] and "ModRM:reg" in self.operands[0]):
+                        if "+disp" in operand.effective_address:
+                            operand_str = f"{operand.reg},[{operand.effective_address[1:4]}{operand.effective_address[5:]}]"
+                        else:
+                            operand_str = f"{operand.reg},{operand.effective_address}"
+                    else:
+                        if "+disp" in operand.effective_address:
+                            operand_str = f"[{operand.effective_address[1:4]}{operand.effective_address[5:]}],{operand.reg}"
+                        else:
+                            operand_str = f"{operand.effective_address},{operand.reg}"
+
+                    if self.mnemonic == "PUSH":
+                        operand_str = operand_str.split(",")[0]
                     if len(instruction_bytes) > 4:
-                        operand_str = operand_str.replace("IMM32", f"0x{instruction_bytes[-4:][::-1].hex().lower()}")
+                        operand_str = operand_str.replace("disp32", f"0x{instruction_bytes[-4:][::-1].hex().lower()}")
                     if len(instruction_bytes) > 1:
-                        operand_str = operand_str.replace("IMM8", f"0x{'%08x' % instruction_bytes[-1]}")
-                    instruction_str += f"{operand_str},"
+                        operand_str = operand_str.replace("disp8", f"0x{'%08x' % instruction_bytes[-1]}".lower())
+                    instruction_str += f"{operand_str}"
                 elif type(operand) is bytes:
                     if self.mnemonic.startswith("J"):
                         # Sepcial handling for jumps
                         jump_addr = '%08x' % (self.jump_offset + address)
                         encoded_operand = f"offset_{jump_addr}h"
+                    elif self.mnemonic == "CALL":
+                        call_addr = '%08x' % (self.call_offset + len(instruction_bytes) + address)
+                        encoded_operand = f"func_{call_addr}"
                     else:
-                        encoded_operand = f"0x{operand[::-1].hex().upper()}"
+                        encoded_operand = f"0x{operand[::-1].hex().lower()}"
                     instruction_str += encoded_operand if operand_count == 0 else f",{encoded_operand}"
                 operand_count += 1
             instruction_str = instruction_str[:-1] if instruction_str.endswith(",") else instruction_str
@@ -359,6 +399,7 @@ class X86_64Instruction(Instruction):
         self.has_immediate = False
         self.opcode_encoding_with_register = False
         self.jump_offset = 0
+        self.call_offset = 0
         self.instruction_bytes = None
         self.mnemonic = None
         self.parsed_operands = None
