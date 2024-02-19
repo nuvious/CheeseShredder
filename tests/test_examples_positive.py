@@ -40,7 +40,7 @@ offset_00000018h:
 0000001B: C20800 retn 0x0008
 """.splitlines()
 
-EXAMPLE_3_OUTPUT = """00000000: E800000000 call func_00000005
+EXAMPLE_3_OUTPUT = """00000000: E800000000 call 0x00000005
 func_00000005:
 00000005: 55 push ebp
 00000006: 89E5 mov ebp,esp
@@ -50,7 +50,7 @@ func_00000005:
 0000000B: 52 push edx
 0000000C: 51 push ecx
 0000000D: 50 push eax
-0000000E: E800000000 call func_00000013
+0000000E: E800000000 call 0x00000013
 func_00000013:
 00000013: 5A pop edx
 00000014: 8D35CB000000 lea esi,0x000000cb
@@ -70,14 +70,14 @@ func_00000013:
 0000004E: 01D1 add ecx,edx
 00000050: 81C1EDFFFFFF add ecx,0xffffffed
 00000056: 51 push ecx
-00000057: E843000000 call func_0000009f
+00000057: E843000000 call 0x0000009f
 0000005C: B91C000000 mov ecx,0x0000001c
 00000061: 51 push ecx
 00000062: 8D0DD1000000 lea ecx,0x000000d1
 00000068: 01D1 add ecx,edx
 0000006A: 81C1EDFFFFFF add ecx,0xffffffed
 00000070: 51 push ecx
-00000071: E80C000000 call func_00000082
+00000071: E80C000000 call 0x00000082
 00000076: 5A pop edx
 00000077: 5A pop edx
 00000078: 58 pop eax
@@ -148,7 +148,7 @@ offset_000000b1h:
 000000EA: 0000 add [eax],eax
 000000EC: 0000 add [eax],eax
 000000EE: 0000 add [eax],eax
-000000F0: db 00""".splitlines()
+000000F0: db 0x00""".splitlines()
 
 EXAMPLE_OFFICE_OUTPUT = """00000000: 55 push ebp
 00000001: 57 push edi
@@ -279,7 +279,6 @@ def test_example_large_2():
     assert len(unparsed_bytes) == 0
     assert len(instructions) == 6
 
-
 def test_example_large_3():
     """
     Repeat of the same disp32 value
@@ -299,8 +298,66 @@ def test_example_large_3():
     output = "\n".join(cheeseshredder.format.LabeledFormatter().print_instructions(in_order_parse)).splitlines()
     assert output[0] == expected_output
 
+def test_example_large_4():
+    """
+    Repeat of the same disp32 value
+    
+    00000070: 81403378563412 add [eax]+0x00000033,0x12345678
+    
+    Should be:
+    
+    00000070: 81403378563412 add [eax+0x00000033],0x12345678
+    """
+    expected_output = "00000000: 81403378563412 add [eax+0x00000033],0x12345678"
+    program_bytes = bytes.fromhex("81403378563412")
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
+    assert len(unparsed_bytes) == 0
+    assert len(instructions) == 1
+    output = "\n".join(cheeseshredder.format.LabeledFormatter().print_instructions(in_order_parse)).splitlines()
+    assert output[0] == expected_output
+
+
+def test_example_large_5():
+    """
+    Repeat of the same disp32 value
+    
+    00000000: F2A7 REPNE CMPSD
+    """
+    expected_output = "00000000: F2A7 repne cmpsd"
+    program_bytes = bytes.fromhex("F2A7")
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
+    assert len(unparsed_bytes) == 0
+    assert len(instructions) == 1
+    output = "\n".join(cheeseshredder.format.LabeledFormatter().print_instructions(in_order_parse)).splitlines()
+    assert output[0] == expected_output
+
+def test_example_large_6():
+    """
+    Repeat of the same disp32 value
+    
+    00000000: 317C3E33 xor [edi+0x00000033]
+    
+    should be 
+    
+    00000000: 317C3E33 xor [esi+edi+0x00000033],edi
+    """
+    expected_output = "00000000: 317C3E33 xor [esi+edi+0x00000033],edi"
+    program_bytes = bytes.fromhex("317C3E33")
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
+    assert len(unparsed_bytes) == 0
+    assert len(instructions) == 1
+    output = "\n".join(cheeseshredder.format.LabeledFormatter().print_instructions(in_order_parse)).splitlines()
+    assert output[0] == expected_output
+
+
 def test_large():
-    # with open(os.path.join(TEST_FILE_DIR, 'positive/large_example'), 'rb') as f:
-    #     disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
-    #     _, _, _ = disassembler.disassemble(f.read())
-    pass
+    with open(os.path.join(TEST_FILE_DIR, 'positive/large_example'), 'rb') as f:
+        with open(os.path.join(TEST_FILE_DIR, 'positive/large_example.out'), 'r') as of:
+            disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+            _, _, in_order_parse = disassembler.disassemble(f.read())
+            output = "\n".join(cheeseshredder.format.LabeledFormatter().print_instructions(in_order_parse)).splitlines()
+            for instruction_line, line in zip(output, of.read().splitlines()):
+                assert instruction_line == line

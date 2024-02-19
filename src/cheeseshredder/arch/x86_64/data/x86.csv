@@ -350,6 +350,7 @@
 "CMPSB","A6","Valid","Valid","Valid","","NA","NA","NA","NA","","For legacy mode, compare byte at address DS:(E)SI with byte at address ES:(E)DI; For 64-bit mode compare byte at address (R|E)SI with byte at address (R|E)DI. The status flags are set accordingly."
 "CMPSW","A7","Valid","Valid","Valid","","NA","NA","NA","NA","","For legacy mode, compare word at address DS:(E)SI with word at address ES:(E)DI; For 64-bit mode compare word at address (R|E)SI with word at address (R|E)DI. The status flags are set accordingly."
 "CMPSD","A7","Valid","Valid","Valid","","NA","NA","NA","NA","","For legacy mode, compare dword at address DS:(E)SI with dword at address ES:(E)DI; For 64-bit mode compare dword at address (R|E)SI with dword at address (R|E)DI. The status flags are set accordingly."
+"REPNE CMPSD","F2 A7","Valid","Valid","Valid","","NA","NA","NA","NA","","For legacy mode, compare dword at address DS:(E)SI with dword at address ES:(E)DI; For 64-bit mode compare dword at address (R|E)SI with dword at address (R|E)DI. The status flags are set accordingly."
 "CMPSQ","REX.W + A7","Valid","Invalid","Invalid","","NA","NA","NA","NA","","Compares quadword at address (R|E)SI with quadword at address (R|E)DI and sets the status flags accordingly."
 "CMPSD xmm1, xmm2/m64, imm8","F2 0F C2 /r ib","Valid","Valid","Invalid","SSE2","ModRM:reg (r, w)","ModRM:r/m (r)","Imm8","NA","NA","Compare low double-precision floating-point value in xmm2/m64 and xmm1 using bits 2:0 of imm8 as comparison predicate."
 "VCMPSD xmm1, xmm2, xmm3/m64, imm8","VEX.NDS.LIG.F2.0F.WIG C2 /r ib","Valid","Valid","Invalid","AVX","ModRM:reg (w)","VEX.vvvv","ModRM:r/m (r)","Imm8","NA","Compare low double-precision floating-point value in xmm3/m64 and xmm2 using bits 4:0 of imm8 as comparison predicate."
@@ -1009,16 +1010,16 @@ FXTRACT,D9 F4,Valid,Valid,Valid,,,,,,,"Separate value in ST(0) into exponent and
 "MOV r/m64,Sreg",REX.W + 8C /r,Valid,Invalid,Invalid,,ModRM:r/m (w),ModRM:reg (r),NA,NA,,Move zero extended 16-bit segment register to r/m64.
 "MOV Sreg,r/m16",8E /r,Valid,Valid,Valid,,ModRM:reg (w),ModRM:r/m (r),NA,NA,,Move r/m16 to segment register.
 "MOV Sreg,r/m64",REX.W + 8E /r,Valid,Invalid,Invalid,,ModRM:reg (w),ModRM:r/m (r),NA,NA,,Move lower 16 bits of r/m64 to segment register.
-"MOV AL,moffs8",A0,Valid,Valid,Valid,,AL/AX/EAX/RAX,Moffs,NA,NA,,Move byte at (seg:offset) to AL.
-"MOV AL,moffs8",REX.W + A0,Valid,Invalid,Invalid,,AL/AX/EAX/RAX,Moffs,NA,NA,,Move byte at (offset) to AL.
-"MOV AX,moffs16",A1,Valid,Valid,Valid,,AL/AX/EAX/RAX,Moffs,NA,NA,,Move word at (seg:offset) to AX.
-"MOV EAX,moffs32",A1,Valid,Valid,Valid,,AL/AX/EAX/RAX,Moffs,NA,NA,,Move doubleword at (seg:offset) to EAX.
-"MOV RAX,moffs64",REX.W + A1,Valid,Invalid,Invalid,,AL/AX/EAX/RAX,Moffs,NA,NA,,Move quadword at (offset) to RAX.
-"MOV moffs8,AL",A2,Valid,Valid,Valid,,Moffs (w),AL/AX/EAX/RAX,NA,NA,,Move AL to (seg:offset).
-"MOV moffs8,AL",REX.W + A2,Valid,Invalid,Invalid,,Moffs (w),AL/AX/EAX/RAX,NA,NA,,Move AL to (offset).
-"MOV moffs16,AX",A3,Valid,Valid,Valid,,Moffs (w),AL/AX/EAX/RAX,NA,NA,,Move AX to (seg:offset).
-"MOV moffs32,EAX",A3,Valid,Valid,Valid,,Moffs (w),AL/AX/EAX/RAX,NA,NA,,Move EAX to (seg:offset).
-"MOV moffs64,RAX",REX.W + A3,Valid,Invalid,Invalid,,Moffs (w),AL/AX/EAX/RAX,NA,NA,,Move RAX to (offset).
+"MOV AL,disp8",A0 ib,Valid,Valid,Valid,,AL/AX/EAX/RAX,Moffs,NA,NA,,Move byte at (seg:offset) to AL.
+"MOV AL,disp8",REX.W + A0,Valid,Invalid,Invalid,,AL/AX/EAX/RAX,Moffs,NA,NA,,Move byte at (offset) to AL.
+"MOV AX,disp16",A1 iw,Valid,Valid,Valid,,AL/AX/EAX/RAX,Moffs,NA,NA,,Move word at (seg:offset) to AX.
+"MOV EAX,disp32",A1 id,Valid,Valid,Valid,,AL/AX/EAX/RAX,Moffs,NA,NA,,Move doubleword at (seg:offset) to EAX.
+"MOV RAX,disp64",REX.W + A1,Valid,Invalid,Invalid,,AL/AX/EAX/RAX,Moffs,NA,NA,,Move quadword at (offset) to RAX.
+"MOV disp8,AL",A2 ib,Valid,Valid,Valid,,Moffs (w),AL/AX/EAX/RAX,NA,NA,,Move AL to (seg:offset).
+"MOV disp8,AL",REX.W + A2,Valid,Invalid,Invalid,,Moffs (w),AL/AX/EAX/RAX,NA,NA,,Move AL to (offset).
+"MOV disp16,AX",A3 iw,Valid,Valid,Valid,,Moffs (w),AL/AX/EAX/RAX,NA,NA,,Move AX to (seg:offset).
+"MOV disp32,EAX",A3 id,Valid,Valid,Valid,,Moffs (w),AL/AX/EAX/RAX,NA,NA,,Move EAX to (seg:offset).
+"MOV disp64,RAX",REX.W + A3,Valid,Invalid,Invalid,,Moffs (w),AL/AX/EAX/RAX,NA,NA,,Move RAX to (offset).
 "MOV r8,imm8",B0+rb ib,Valid,Valid,Valid,,opcode +rd (w),imm8/16/32/64,NA,NA,,Move imm8 to r8.
 "MOV r8,imm8",REX + B0+rb ib,Valid,Invalid,Invalid,,opcode +rd (w),imm8/16/32/65,NA,NA,,Move imm8 to r8.
 "MOV r16,imm16",B8+rw iw,Valid,Valid,Valid,,opcode +rd (w),imm8/16/32/66,NA,NA,,Move imm16 to r16.
@@ -2166,8 +2167,6 @@ FXTRACT,D9 F4,Valid,Valid,Valid,,,,,,,"Separate value in ST(0) into exponent and
 "PUSH r16","50+rw","Valid","Valid","Valid","","opcode +rd (r)","NA","NA","NA","","Push r16."
 "PUSH r32","50+rd","Invalid","Valid","Valid","","opcode +rd (r)","NA","NA","NA","","Push r32."
 "PUSH r64","50+rd","Valid","Invalid","Invalid","","opcode +rd (r)","NA","NA","NA","","Push r64."
-"PUSH imm8","6A ib","Valid","Valid","Valid","","","","","","","Push imm8."
-"PUSH imm16","68 iw","Valid","Valid","Valid","","","","","","","Push imm16."
 "PUSH imm32","68 id","Valid","Valid","Valid","","","","","","","Push imm32."
 "PUSH CS","0E","Invalid","Valid","Valid","","","","","","","Push CS."
 "PUSH SS","16","Invalid","Valid","Valid","","","","","","","Push SS."
