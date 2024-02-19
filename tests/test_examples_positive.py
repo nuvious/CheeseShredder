@@ -1,4 +1,3 @@
-import glob
 import os
 
 import cheeseshredder.base
@@ -169,15 +168,6 @@ def test_nop():
     instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
     assert len(unparsed_bytes) == 0
 
-def test_fuzz_hit_00():
-    # BSWAP has a prefix before a register encoded opcode, test ensures these are hanlded properly
-    # 0FCF bswap edi
-    program_bytes = b'\x0f\xcf'
-    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
-    instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
-    output = "\n".join(cheeseshredder.format.LabeledFormatter().print_instructions(in_order_parse)).splitlines()
-    assert len(unparsed_bytes) == 0
-
 def test_example_1():
     disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
     with open(os.path.join(TEST_FILE_DIR, 'positive/example1'), 'rb') as f:
@@ -226,9 +216,31 @@ def test_example_office():
         for instruction_line, line in zip(output, EXAMPLE_OFFICE_OUTPUT):
             assert instruction_line == line
 
-def test_example_large():
-    # disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
-    # with open(os.path.join(TEST_FILE_DIR, 'positive/large_example'), 'rb') as f:
-    #     instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(f.read())
-    #     assert len(unparsed_bytes) == 0
-    pass
+def test_example_large_1():
+    """
+    First observed mangled disassembly. 
+   
+    00000BC2: 03840D3333333303844D33 add [ecx+0x334d8403+ebp],eax
+    00000BCD: 3333 xor esi,[ebx]
+    00000BCF: 3303 xor eax,[ebx]
+    00000BD1: 848D33333333 test [ebp+0x33333333],ecx
+    00000BD7: 0384CD3333333303440D33 add [ecx*8+0x330d4403+ebp],eax
+    00000BE2: 03444D3303 add [ecx*2+0x00000003+ebp],eax
+    00000BE7: 44 inc esp
+    00000BE8: 8D33 lea esi,[ebx]
+    00000BEA: 0344CD3303 add [ecx*8+0x00000003+ebp],eax
+    00000BEF: 840D00000000 test 0x00000000,ecx
+    00000BF5: 03844D0000000003848D00 add [ecx*2+0x008d8403+ebp],eax
+    00000C00: 0000 add [eax],eax
+    00000C02: 0003 add [ebx],eax
+    00000C04: 84CD test ebp,ecx
+    00000C06: 0000 add [eax],eax
+    00000C08: 0000 add [eax],eax
+    """
+    
+    program_bytes = bytes.fromhex("03840D3333333303844D3333333303848D333333330384CD3333333303440D3303444D3303448D33"
+                                  "0344CD3303840D0000000003844D0000000003848D0000000000000384CD00000000")
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
+    assert len(unparsed_bytes) == 0
+    assert len(instructions) == 13

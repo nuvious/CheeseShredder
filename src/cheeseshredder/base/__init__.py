@@ -26,72 +26,46 @@ class Disassember():
     def get_instruction_table(self):
         return {}
     
-    def next_instruction(self, program_bytes, max_unparsed_bytes=20):
-        """Attempts to parse the next instruction. If it can't, it pops 1 byte off the top of the bytes and returns None 
-        for the parsed instruction.
-
-        Args:
-            program_bytes (bytes): Bytes left to parse.
-
-        Returns:
-            tuple of bytes, bytes, cheeseshredder.base.Instruction or None:
-                Returns the un-parsed bytes, parsed bytes, and the Instruction parsed. The Instruction will be None if
-                the bytes were not parsable.
-        """
-        byte_count = 1
-        possible_instructions = {}
-        partial_instructions = {}
-        for k, i in self.get_instruction_table().items():
-            result = i.is_valid(program_bytes[:byte_count])
-            if result != 0:
-                possible_instructions[k] = i
-            if result == 1:
-                partial_instructions[k] = i
-        last_instruction_set = {}
-        while (
-                byte_count < max_unparsed_bytes and
-                (
-                    len(possible_instructions) > 1 or
-                    len(partial_instructions) > 0
-                )
-            ):
-            # Add one more byte to be parsed
-            byte_count += 1
-            # Clear partial instruction tracker
-            partial_instructions = {}
-            last_instruction_set = copy.deepcopy(possible_instructions)
-            possible_instructions = {}
-            for k, i in last_instruction_set.items():
-                result = i.is_valid(program_bytes[:byte_count])
-                if result != 0:
-                    possible_instructions[k] = i
-                if result == 1:
-                    partial_instructions[k] = i
-        if len(possible_instructions) == 1 and len(partial_instructions) == 0:
-            logging.debug("%s %s", program_bytes[:byte_count].hex(), list(possible_instructions.values())[0])
-            return (
-                program_bytes[byte_count:],
-                program_bytes[:byte_count],
-                copy.deepcopy(list(possible_instructions.values())[0])
-            )
-        else:
-            if len(last_instruction_set) > 1:
-                # In some cases instructions are synonymous such as JE and JZ. Check to see if the descriptions match.
+    def next_instruction(self, program_bytes, byte_count=1, max_byte_count=20):
+        possible_instructions = self.get_instruction_table()
+        while True:
+            partial_match = {}
+            full_match = {}
+            instruction_bytes = program_bytes[:byte_count]
+            for k, i in possible_instructions.items():
+                result = i.is_valid(instruction_bytes)
+                if result == 2:
+                    full_match[k] = i
+                elif result == 1:
+                    partial_match[k] = i
+            
+            if len(full_match) > 1:
+                # Edge case; ex is JE and JZ have the same opcode and function
                 desc = None
-                for k, i in last_instruction_set.items():
+                for k, i in full_match.items():
                     if desc is None:
                         desc = i.description
                     elif desc != i.description:
-                        
-                        return program_bytes[1:], program_bytes[:1], None
+                        # Two different instructions fully match, raise an exception and treat as a bug
+                        raise Exception(f"Bytes {instruction_bytes} mapped to multiple instructions: {full_match}")
+                # All should've matched by this point
                 return (
                     program_bytes[byte_count:],
-                    program_bytes[:byte_count],
-                    copy.deepcopy(list(last_instruction_set.values())[0])
+                    instruction_bytes,
+                    copy.deepcopy(list(full_match.values())[-1])
                 )
-            else:
-                # raise Exception(f"Unparsed instrution with bytes {program_bytes[:byte_count]}")
+            elif byte_count >= max_byte_count and len(full_match) == 0:
+                # Exit case, no instruction found
                 return program_bytes[1:], program_bytes[:1], None
+            elif len(full_match) == 1:
+                return (
+                    program_bytes[byte_count:],
+                    instruction_bytes,
+                    copy.deepcopy(list(full_match.values())[0])
+                )
+
+            possible_instructions = {**full_match, **partial_match}
+            byte_count += 1
     
     def disassemble(self, program_bytes, *args, **kwargs):
         instructions = []

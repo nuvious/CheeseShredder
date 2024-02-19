@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/.venv/bin/cheeseshredder", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/src/cheeseshredder/__main__.py", line 31, in main
+    _, _, in_order_parse = disassembler.disassemble(f.read())
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/src/cheeseshredder/base/__init__.py", line 104, in disassemble
+    program_bytes, parsed_bytes, instruction = self.next_instruction(program_bytes)
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/src/cheeseshredder/base/__init__.py", line 65, in next_instruction
+    result = i.is_valid(program_bytes[:byte_count])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/src/cheeseshredder/arch/x86_64/__init__.py", line 309, in is_valid
+    raise Exception(f"Operand {b} not implemented!")
+Exception: Operand m64 not implemented!

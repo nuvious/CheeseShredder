@@ -23,16 +23,30 @@ _UNIMPLEMENTED_INSTRUCTION_TOKENS = [
     "r64",
     "r/m16",
     "r/m64",
+    "m64",
     "xmm",
     "ymm",
     "ST(i)",
     "ST(0)",
     "rel16",
     " AX, ",
-    " AL, "
+    " AL, ",
+    "m2byte",
+    "m16int",
+    "m32int",
+    "m64int",
+    "m14/28byte",
+    "m94/108byte",
+    "m32fp",
+    "m64fp",
+    "STAC"
 ]
 _CONTAINS_INVALID_INSTRUCTION_TOKENS = \
     lambda inst_str: any([ i in inst_str for i in _UNIMPLEMENTED_INSTRUCTION_TOKENS])
+
+_JHU_REQUIRED_MNEMONICS = ["ADD", "JMP", "POP", "AND", "JZ", "JNZ", "PUSH", "CALL", "LEA", "CMPSD", "CLFLUSH", "MOV",
+                           "RETF", "CMP", "MOVSD", "RETN", "DEC", "NOP", "SUB", "IDIV", "NOT", "TEST", "INC", "OR",
+                           "XOR"]
 
 _REGISTERS = [
     "eax",
@@ -188,10 +202,13 @@ def get_instruction_table():
         with instruction_table_file.open("r", encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if _CONTAINS_INVALID_INSTRUCTION_TOKENS(row["Instruction"]) or \
-                    CONTAINS_UNIMPLEMENTED_OPERANDS(row["Opcode"]):
-                    continue
                 instruction = X86_64Instruction.instruction_from_row(row)
+                if (_CONTAINS_INVALID_INSTRUCTION_TOKENS(row["Instruction"]) or
+                    CONTAINS_UNIMPLEMENTED_OPERANDS(row["Opcode"]) or
+                    row["Valid 32-bit"] == "Invalid" or
+                    instruction.mnemonic not in _JHU_REQUIRED_MNEMONICS
+                ):
+                    continue
                 _INSTRUCTION_TABLE[(instruction.opcode, instruction.operands)] = instruction
     return _INSTRUCTION_TABLE
 
@@ -236,7 +253,7 @@ class X86_64Instruction(Instruction):
             "description": row["Description"]
         }
         return X86_64Instruction(**kwargs)
-
+        
     def is_valid(self, instruction_bytes):
         """Returns if the instruction is valid, partial or invalid (2, 1, 0)
 
@@ -246,6 +263,10 @@ class X86_64Instruction(Instruction):
         Returns:
             int: Valid, Partial, or Invalid match. (2, 1, 0)
         """
+        # Check for NOP/XCHNG EAX,EAX edge case. Don't match on XCHG
+        if self.mnemonic == "XCHG" and instruction_bytes == b'\x90':
+            return 0
+        
         # Check if opcode is satisfied
         byte_pos = 0
         self.parsed_operands = []
@@ -268,8 +289,6 @@ class X86_64Instruction(Instruction):
                             sib_entry = _SIB_TABLE[instruction_bytes[byte_pos]]
                             mod_rm_entry.sib_entry = sib_entry
                             if sib_entry['r32'].startswith('A disp32 with'):
-                                ## TODO: Figure out this SIB stuff.
-                                ## Current instruction of interest is 8104853333333378563412
                                 if mod_rm_entry.mod == 0:
                                     byte_pos += 4
                                 elif mod_rm_entry.mod == 1:
@@ -389,6 +408,9 @@ class X86_64Instruction(Instruction):
             return instruction_str.strip()
         except:
             raise Exception(f"This failed: {instruction_bytes.hex()}")
+    
+    def __repr__(self):
+        return f"{self.mnemonic} {self.operands}"
     
     def __str__(self):
         return f"{self.mnemonic} {self.operands}"

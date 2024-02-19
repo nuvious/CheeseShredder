@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/.venv/bin/cheeseshredder", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/src/cheeseshredder/__main__.py", line 31, in main
+    _, _, in_order_parse = disassembler.disassemble(f.read())
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/src/cheeseshredder/base/__init__.py", line 78, in disassemble
+    program_bytes, parsed_bytes, instruction = self.next_instruction(program_bytes)
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/src/cheeseshredder/base/__init__.py", line 50, in next_instruction
+    raise Exception(f"Bytes {instruction_bytes} mapped to multiple instructions: {full_match}")
+Exception: Bytes b'\xd4\n' mapped to multiple instructions: {((212, 10), (None, None, None, None)): <cheeseshredder.arch.x86_64.X86_64Instruction object at 0x7f2c2a7f0450>, ((212, 'ib'), (None, None, None, None)): <cheeseshredder.arch.x86_64.X86_64Instruction object at 0x7f2c2a1fced0>}

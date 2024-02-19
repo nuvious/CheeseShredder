@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/.venv/bin/cheeseshredder", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/src/cheeseshredder/__main__.py", line 29, in main
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/src/cheeseshredder/arch/x86_64/__init__.py", line 205, in __init__
+    get_instruction_table()
+  File "/home/nuvious/EN.695.744.81.SP24-ReverseEngineering/CheeseShredder/src/cheeseshredder/arch/x86_64/__init__.py", line 190, in get_instruction_table
+    for row in reader:
+  File "/usr/lib/python3.11/csv.py", line 111, in __next__
+    row = next(self.reader)
+          ^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
