@@ -410,6 +410,8 @@ class X86_64Instruction(Instruction):
                             operand_str = f"{operand.reg},[{operand.effective_address[1:4]}{operand.effective_address[5:]}]"
                         else:
                             operand_str = f"{operand.reg},{operand.effective_address}"
+                    elif(operand in ["disp8", "disp32"]):
+                        operand_str = f"[{operand}]"
                     else:
                         if "+disp" in operand.effective_address:
                             operand_str = f"[{operand.effective_address[1:4]}{operand.effective_address[5:]}],{operand.reg}"
