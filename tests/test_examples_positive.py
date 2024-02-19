@@ -278,3 +278,29 @@ def test_example_large_2():
     instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
     assert len(unparsed_bytes) == 0
     assert len(instructions) == 6
+
+
+def test_example_large_3():
+    """
+    Repeat of the same disp32 value
+    
+    00000034: 81053333333378563412 add 0x12345678,0x12345678
+    
+    Should be:
+    
+    00000034: 81053333333378563412 add [0x33333333],0x12345678
+    """
+    expected_output = "00000000: 81053333333378563412 add [0x33333333],0x12345678"
+    program_bytes = bytes.fromhex("81053333333378563412")
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
+    assert len(unparsed_bytes) == 0
+    assert len(instructions) == 1
+    output = "\n".join(cheeseshredder.format.LabeledFormatter().print_instructions(in_order_parse)).splitlines()
+    assert output[0] == expected_output
+
+def test_large():
+    # with open(os.path.join(TEST_FILE_DIR, 'positive/large_example'), 'rb') as f:
+    #     disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    #     _, _, _ = disassembler.disassemble(f.read())
+    pass

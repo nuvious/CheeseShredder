@@ -345,6 +345,32 @@ class X86_64Instruction(Instruction):
         else:
             return 1
     
+    def sub_disp(self, instruction_bytes, operand_str, byte_offset):
+        # If it's justr a disp32 or disp8 it's 
+        if operand_str in ["disp32", "disp8"]:
+            operand_str = f"[{operand_str}]"
+        disp_pattern = r'\b(disp(?:8|32))\b'
+        disp_str_matches = re.findall(disp_pattern, operand_str)
+        operand_str_components = re.split(r'disp(?:8|32)', operand_str)
+        disp_count = 0
+        ret_oper_str = [operand_str_components[0]]
+        for disp_str in disp_str_matches[::-1]:
+            if disp_str == 'disp32':
+                ret_oper_str.append(_bytes_to_signed_hex_string(instruction_bytes[len(instruction_bytes)-4-byte_offset:len(instruction_bytes)-byte_offset][::-1]))
+                byte_offset += 4
+                disp_count += 1
+                if disp_count < len(operand_str_components) - 1:
+                    ret_oper_str.append(operand_str_components[disp_count])
+            elif disp_str == 'disp8':
+                ret_oper_str.append(_bytes_to_signed_hex_string(instruction_bytes[len(instruction_bytes)-1-byte_offset:len(instruction_bytes)-byte_offset][::-1]))
+                byte_offset+=1
+                disp_count += 1
+                if disp_count < len(operand_str_components) - 1:
+                    ret_oper_str.append(operand_str_components[disp_count])
+        if disp_count < len(operand_str_components):
+            ret_oper_str.append(operand_str_components[disp_count])
+        return byte_offset, "".join(ret_oper_str)        
+    
     def format(self, instruction_bytes, address):
         try:
             instruction_str = f"{instruction_bytes.hex().upper()} {self.mnemonic.lower()} "
@@ -357,7 +383,9 @@ class X86_64Instruction(Instruction):
                         index = o.index(instruction_bytes[i])
                         instruction_str += _REGISTERS[index].lower()
                         operand_count += 1
-            for operand in self.parsed_operands:
+            disp_byte_offset = 0
+            formatted_operands = []
+            for operand in self.parsed_operands[::-1]:
                 if type(operand) is ModRM:
                     operand_str = ""
                     if '[--][--]' in operand.effective_address:
@@ -371,7 +399,7 @@ class X86_64Instruction(Instruction):
                             else:
                                 raise ValueError("There is no legal SIB state with mod bits set to 11.")
                         else:
-                            operand_str = f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}]"
+                            operand_str = f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}{operand.effective_address[8:]}]"
                     elif (self.operands[0] and
                         self.operands[1] and
                         "ModRM" in self.operands[0] and
@@ -390,11 +418,11 @@ class X86_64Instruction(Instruction):
 
                     if self.mnemonic == "PUSH":
                         operand_str = operand_str.split(",")[0]
-                    if len(instruction_bytes) > 4:
-                        operand_str = operand_str.replace("disp32", _bytes_to_signed_hex_string(instruction_bytes[-4:][::-1]))
-                    if len(instruction_bytes) > 1:
-                        operand_str = operand_str.replace("disp8", _bytes_to_signed_hex_string(instruction_bytes[-1]))
-                    instruction_str += f"{operand_str}"
+                    
+                    if "disp" in operand_str:
+                        disp_byte_offset, operand_str = self.sub_disp(instruction_bytes, operand_str, disp_byte_offset)
+
+                    formatted_operands = [f"{operand_str}"] + formatted_operands
                 elif type(operand) is bytes:
                     if self.mnemonic.startswith("J"):
                         # Sepcial handling for jumps
@@ -405,8 +433,10 @@ class X86_64Instruction(Instruction):
                         encoded_operand = f"func_{call_addr}"
                     else:
                         encoded_operand = f"0x{operand[::-1].hex().lower()}"
-                    instruction_str += encoded_operand if operand_count == 0 else f",{encoded_operand}"
+                        disp_byte_offset += len(operand)
+                    formatted_operands = [encoded_operand if operand_count == 0 else f",{encoded_operand}"] + formatted_operands
                 operand_count += 1
+            instruction_str += ",".join(formatted_operands)
             instruction_str = instruction_str[:-1] if instruction_str.endswith(",") else instruction_str
             return instruction_str.strip()
         except:
