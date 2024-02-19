@@ -288,7 +288,8 @@ class X86_64Instruction(Instruction):
                         if byte_pos < len(instruction_bytes):
                             sib_entry = _SIB_TABLE[instruction_bytes[byte_pos]]
                             mod_rm_entry.sib_entry = sib_entry
-                            if sib_entry['r32'].startswith('A disp32 with'):
+                            if (sib_entry['r32'].startswith('A disp32 with') and 
+                                'disp' not in mod_rm_entry.effective_address):
                                 if mod_rm_entry.mod == 0:
                                     byte_pos += 4
                                 elif mod_rm_entry.mod == 1:
@@ -369,6 +370,8 @@ class X86_64Instruction(Instruction):
                                 operand_str = f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp32+ebp],{operand.reg}"
                             else:
                                 raise ValueError("There is no legal SIB state with mod bits set to 11.")
+                        else:
+                            operand_str = f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}]"
                     elif (self.operands[0] and
                         self.operands[1] and
                         "ModRM" in self.operands[0] and

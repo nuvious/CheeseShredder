@@ -195,7 +195,7 @@ def test_example_3():
     disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
     with open(os.path.join(TEST_FILE_DIR, 'positive/example3'), 'rb') as f:
         instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(f.read())
-        assert len(unparsed_bytes) == 1 # There is one trailing null byte 
+        assert len(unparsed_bytes) == 1 # One null byte is left at the end 
         # example 3 has raw strings encoded at the end, these get interpreted as instructions later
         # Below is just a quick correction since it's expected behavior
         # TODO: See if you can use the system calls to detect memory addresses that are strings
@@ -244,3 +244,37 @@ def test_example_large_1():
     instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
     assert len(unparsed_bytes) == 0
     assert len(instructions) == 13
+
+def test_example_large_2():
+    """
+    Another set of mangled add instructions
+    
+    0001042F: 81048533333333 add [eax*4+0x33333333],eax,0x33333333
+    00010436: db 78
+    00010437: 56 push esi
+    00010438: db 34
+    00010439: db 12
+    0001043A: 8104C533333333 add [eax*8+0x33333333],eax,0x33333333
+    00010441: db 78
+    00010442: 56 push esi
+    00010443: db 34
+    00010444: db 12
+    00010445: 81403378563412 add [eax]+0x00000012,0x12345678
+    0001044C: 8144003378563412 add ,0x12345678
+    00010454: 81048533000000 add [eax*4+0x00000033],eax,0x00000033
+    0001045B: db 78
+    0001045C: 56 push esi
+    0001045D: db 34
+    0001045E: db 12
+    0001045F: 8104C533000000 add [eax*8+0x00000033],eax,0x00000033
+    00010466: db 78
+    00010467: 56 push esi
+    00010468: db 34
+    00010469: db 12
+    """
+    program_bytes = bytes.fromhex("81048533333333785634128104C53333333378563412814033785634128144003378563412"
+                                  "81048533000000785634128104C53300000078563412")
+    disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
+    instructions, unparsed_bytes, in_order_parse = disassembler.disassemble(program_bytes)
+    assert len(unparsed_bytes) == 0
+    assert len(instructions) == 6
