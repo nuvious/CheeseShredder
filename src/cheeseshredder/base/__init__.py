@@ -20,7 +20,7 @@ class Instruction(ModelBase):
     pass
 
 
-class Disassember():
+class Disassembler():
     """Base disassembler class
     """
     def get_instruction_table(self):
@@ -53,7 +53,7 @@ class Disassember():
             # Keep track of partial and full matches
             partial_match = {}
             full_match = {}
-            
+
             # Slice off the instruction bytes we're trying to parse
             instruction_bytes = program_bytes[:byte_count]
             # Check if instructions are partial or full matches
@@ -64,7 +64,7 @@ class Disassember():
                 elif result == 1:
                     partial_match[k] = i
 
-            # If there's more than 1 full match, check some edge cases or log an error if multiple iunstructions map
+            # If there's more than 1 full match, check some edge cases or log an error if multiple instructions map
             # to the same bytes
             if len(full_match) > 1:
                 # Edge case; ex is JE and JZ have the same opcode and function
@@ -83,7 +83,7 @@ class Disassember():
                     instruction_bytes,
                     copy.deepcopy(list(full_match.values())[-1])
                 )
-            # If we've exausted the possible instruction length and still haven't found a match, assume the first byte
+            # If we've exhausted the possible instruction length and still haven't found a match, assume the first byte
             # is unparsable and move on
             elif byte_count >= max_byte_count and len(full_match) == 0:
                 # Exit case, no instruction found
@@ -101,7 +101,7 @@ class Disassember():
             byte_count += 1
 
     def disassemble(self, program_bytes, *_, **kwargs):
-        """Base disassembly fuction.
+        """Base disassembly function.
 
         Args:
             program_bytes (bytes): The raw bytes of the program to disassemble.
@@ -116,7 +116,7 @@ class Disassember():
         progress = tqdm.tqdm(total=len(program_bytes)) if kwargs.get('progress', False) else None
         # While there's still bytes to parse
         while len(program_bytes):
-            # Get the next intstruction
+            # Get the next instruction
             program_bytes, parsed_bytes, instruction = self.next_instruction(program_bytes)
             # Instruction successfully parsed
             if instruction:

@@ -41,8 +41,7 @@ offset_00000018h:
 """.splitlines()
 
 EXAMPLE_3_OUTPUT = """00000000: E800000000 call 0x00000005
-func_00000005:
-00000005: 55 push ebp
+0x0000000500000005: 55 push ebp
 00000006: 89E5 mov ebp,esp
 00000008: 57 push edi
 00000009: 56 push esi
@@ -51,8 +50,7 @@ func_00000005:
 0000000C: 51 push ecx
 0000000D: 50 push eax
 0000000E: E800000000 call 0x00000013
-func_00000013:
-00000013: 5A pop edx
+0x0000001300000013: 5A pop edx
 00000014: 8D35CB000000 lea esi,0x000000cb
 0000001A: 01D6 add esi,edx
 0000001C: 81C6EDFFFFFF add esi,0xffffffed
@@ -88,8 +86,7 @@ func_00000013:
 0000007D: 5F pop edi
 0000007E: 5D pop ebp
 0000007F: C20000 retn 0x0000
-func_00000082:
-00000082: 55 push ebp
+0x0000008200000082: 55 push ebp
 00000083: 89E5 mov ebp,esp
 00000085: 50 push eax
 00000086: 53 push ebx
@@ -105,8 +102,7 @@ func_00000082:
 0000009C: 58 pop eax
 0000009D: 5D pop ebp
 0000009E: C3 retn
-func_0000009f:
-0000009F: 55 push ebp
+0x0000009f0000009F: 55 push ebp
 000000A0: 89E5 mov ebp,esp
 000000A2: 57 push edi
 000000A3: 56 push esi
@@ -198,8 +194,7 @@ def test_example_3():
         assert len(unparsed_bytes) == 1 # One null byte is left at the end 
         # example 3 has raw strings encoded at the end, these get interpreted as instructions later
         # Below is just a quick correction since it's expected behavior
-        # TODO: See if you can use the system calls to detect memory addresses that are strings
-        assert len(instructions) == len(EXAMPLE_3_OUTPUT) - 6 # There are 2 jump labels and 4 function labels
+        assert len(instructions) == len(EXAMPLE_3_OUTPUT) - 2 # There are 2 jump labels
         # When outputs have labels, some lines will contain newlines in them. Join and re-split to get individual lines
         output = "\n".join(cheeseshredder.format.LabeledFormatter().print_instructions(in_order_parse)).splitlines()
         for instruction_line, line in zip(output, EXAMPLE_3_OUTPUT):

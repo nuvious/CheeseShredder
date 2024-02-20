@@ -13,8 +13,6 @@ while true; do
         done
         cp test "fuzz2/test_case_$test_case"
         cp test.out "fuzz2/test_case_$test_case.out"
-    fi
-    if [[ "$test_count" -gt "100" ]]; then
         break
     fi
 done

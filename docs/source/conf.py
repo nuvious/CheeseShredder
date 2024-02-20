@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.abspath('../src'))
 project = 'Cheeseshredder - An x86 Disassembler'
 copyright = '2024, David Cheeseman'
 author = 'David Cheeseman'
-release = '0.0.1'
+release = '0.0.2'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

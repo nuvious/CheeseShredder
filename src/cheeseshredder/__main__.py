@@ -35,7 +35,11 @@ def _main(args):
     disassembler = cheeseshredder.arch.x86_64.X86_64Disassembler()
     with open(args.input, 'rb') as f:
         _, _, in_order_parse = disassembler.disassemble(f.read(), progress=args.progress)
-        for instruction_str in cheeseshredder.format.LabeledFormatter().print_instructions(in_order_parse):
+        formatter = cheeseshredder.format.LabeledFormatter()
+        for instruction_str in formatter.print_instructions(
+            in_order_parse,
+            label_jumps=(not args.no_jump_label),
+            label_functions=args.label_functions):
             print(instruction_str)
 
 
@@ -48,7 +52,8 @@ def main():
         '-i', '--input', help="Input file to disassemble.", required=True
     )
     parser.add_argument(
-        '-d', '--debug', help="Sets debug mode; throws exceptions on any parse error.", required=True
+        '-d', '--debug', help="Sets debug mode; throws exceptions on any parse error.", default=False,
+        action='store_true'
     )
     parser.add_argument(
         '-p', '--progress', help="Show progress bar (requires tqdm).", default=False, action='store_true'
@@ -58,6 +63,10 @@ def main():
     )
     parser.add_argument(
         '-f', '--label-functions', help="Label function locations and calls with func_XXXXXXXX.",
+        default=False, action='store_true'
+    )
+    parser.add_argument(
+        '--no-jump-label', help="Don't label jumps with offset_XXXXXXh format and just output the immediate value.",
         default=False, action='store_true'
     )
     parser.add_argument(

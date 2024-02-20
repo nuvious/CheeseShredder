@@ -8,7 +8,7 @@ class BaseFormatter:
 
         Yields:
             str:
-                A formatted isntruction string
+                A formatted instruction string
         """
         for address, instruction, instruction_bytes in instruction_meta:
             yield (f"{'%08X' % address}:"
@@ -25,15 +25,15 @@ class LabeledFormatter(BaseFormatter):
 
         Yields:
             str:
-                A formatted isntruction string
+                A formatted instruction string
         """
         # Find all the jumps and their associated addresses for labeling
-        pending_labels = [
+        pending_jump_labels = [
             address + instruction.jump_offset
             for address, instruction, _
             in instruction_meta if instruction and instruction.mnemonic.startswith("J")
         ]
-        # Find all the fucntions and their associated addresses for labeling
+        # Find all the functions and their associated addresses for labeling
         pending_function_labels = [
             address + instruction.call_offset + len(instruction_bytes)
             for address, instruction, instruction_bytes
@@ -42,10 +42,16 @@ class LabeledFormatter(BaseFormatter):
         # Loop through the instructions and output them
         for address, instruction, instruction_bytes in instruction_meta:
             prefix = ""
-            if address in pending_labels:
-                prefix += f"offset_{'%08x' % address}h:\n"
+            if address in pending_jump_labels:
+                if label_jumps:
+                    prefix += f"offset_{'%08x' % address}h:\n"
+                else:
+                    prefix += '0x%08x' % address
             if address in pending_function_labels:
-                prefix += f"func_{'%08x' % address}:\n"
+                if label_functions:
+                    prefix += f"func_{'%08x' % address}:\n"
+                else:
+                    prefix += '0x%08x' % address
             instruction_str = (
                 f'db 0x{instruction_bytes.hex()}'
                 if instruction is None

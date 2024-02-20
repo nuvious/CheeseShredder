@@ -5,7 +5,7 @@ import logging
 import pkg_resources
 
 import cheeseshredder
-from ...base import Instruction, Disassember
+from ...base import Instruction, Disassembler
 
 _log = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ def _contains_unimplemented_operands(inst_str):
 
 
 def _try_parse_opcode_hex(raw_str):
-    """Tries to parse an operand string which, nomrally hex, may include suffixes such as +rd, cw, etc.
+    """Tries to parse an operand string which, normally hex, may include suffixes such as +rd, cw, etc.
 
     Args:
         raw_str (str): A hex string
@@ -70,7 +70,7 @@ def _try_parse_opcode_hex(raw_str):
         return raw_str
     try:
         try:
-            return int.from_bytes(bytes.fromhex(raw_str))
+            return int.from_bytes(bytes.fromhex(raw_str), byteorder='big')
         except Exception:
             opcodes = []
             if (raw_str.endswith("+rd") or
@@ -215,7 +215,7 @@ def get_prefix_table():
     return _PREFIXES
 
 
-class X86_64Disassembler(Disassember):
+class X86_64Disassembler(Disassembler):
     """X86_64 disassembler class.
     """
     def __init__(self) -> None:
@@ -323,7 +323,6 @@ class X86_64Instruction(Instruction):
                     else:
                         byte_pos += 1
                     continue
-
                 elif b in ['cd', 'id']:  # imm32
                     if byte_pos + 4 > len(instruction_bytes):
                         return 1
@@ -343,7 +342,7 @@ class X86_64Instruction(Instruction):
                     byte_pos += 1
                     continue
                 else:
-                    raise Exception(f"Operand {b} not implemented!")
+                    raise Exception(f"Operand {b} not implemented! {instruction_bytes}\n{self}")
             elif type(b) is tuple:
                 if instruction_bytes[byte_pos] not in b:
                     return 0
@@ -351,7 +350,7 @@ class X86_64Instruction(Instruction):
                 if b != instruction_bytes[byte_pos]:
                     return 0
             byte_pos += 1
-        # If we parse successfull
+        # If we parse successful
         if byte_pos == len(instruction_bytes):
             self.instruction_bytes = instruction_bytes[:]
             if self.mnemonic.startswith("J") and type(self.parsed_operands[-1]) is bytes:
@@ -374,7 +373,7 @@ class X86_64Instruction(Instruction):
             byte_offset (int): The current byte offset provided by the caller
 
         Returns:
-            str: The operand with disp8 and disp32 appopriately substituted.
+            str: The operand with disp8 and disp32 appropriately substituted.
         """
         # If it's just a disp32 or disp8 it's a pointer, so wrap in brackets and return it. It will get replaced by
         # other logic
@@ -422,13 +421,13 @@ class X86_64Instruction(Instruction):
         return byte_offset, "".join(ret_oper_str)
 
     def format(self, instruction_bytes, address, label_jumps=True, label_functions=False):
-        """Formats an instruction given an address and isntruction bytes.
+        """Formats an instruction given an address and instruction bytes.
 
         Args:
             instruction_bytes (bytes): The bytes for the instruction
-            address (int): Address in memory for the instruction (needed for formating JZ/JE/JNE/JNZ/CALL instructions)
-            label_jumps (bool, optional): Whether to labels jumps in 'offset_XXXXXXXXXh' foramt. Defaults to True.
-            label_functions (bool, optional): Whether to label calls in 'func_XXXXXXXX' foramt. Defaults to False.
+            address (int): Address in memory for the instruction (needed for formatting JZ/JE/JNE/JNZ/CALL instructions)
+            label_jumps (bool, optional): Whether to labels jumps in 'offset_XXXXXXXXXh' format. Defaults to True.
+            label_functions (bool, optional): Whether to label calls in 'func_XXXXXXXX' format. Defaults to False.
 
         Raises:
             ValueError: Raised when an SIB byte is parsed with an illegal state.
@@ -456,7 +455,7 @@ class X86_64Instruction(Instruction):
                         instruction_str += _REGISTERS[index].lower()
                         operand_count += 1
 
-            # Loop through and append formated parsed operands
+            # Loop through and append formatted parsed operands
             disp_byte_offset = 0
             formatted_operands = []
             for operand in self.parsed_operands[::-1]:
