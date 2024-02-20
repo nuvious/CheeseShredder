@@ -12,4 +12,5 @@ def test_main():
     args.input = os.path.join(TEST_FILE_DIR, 'positive/example1')
     args.log_level = "INFO"
     args.progress = False
+    args.debug=False
     cheeseshredder.__main__._main(args)

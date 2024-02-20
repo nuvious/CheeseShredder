@@ -1,6 +1,6 @@
 [project]
-name = "cheeseshredder"  # Required
-version = "0.0.0"  # Required
+name = "cheeseshredder"
+version = "0.0.1"
 description = "A binrary disassembler for x86_64 instructions."
 readme = "README.md"
 requires-python = ">=3.7"
@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies] # Optional
-dev = ["jupyterlab"]
+doc = ["sphinx","m2r2"]
 test = ["pytest", "flake8"]
 tox-conda = ["tox-conda"]
 

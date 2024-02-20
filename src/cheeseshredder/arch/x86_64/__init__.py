@@ -1,14 +1,19 @@
 import re
 import csv
-import copy
+import sys
 import logging
 import pkg_resources
 
-from . import data
+import cheeseshredder
 from ...base import Instruction, Disassember
 
 _log = logging.getLogger(__name__)
 
+_JHU_REQUIRED_MNEMONICS = ["ADD", "JMP", "POP", "AND", "JZ", "JNZ", "PUSH", "CALL", "LEA", "REPNE CMPSD", "CLFLUSH",
+                           "MOV", "RETF", "CMP", "MOVSD", "RETN", "DEC", "NOP", "SUB", "IDIV", "NOT", "TEST", "INC",
+                           "OR", "XOR"]
+_REGISTERS = ["eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi"]
+_UNIMPLEMENTED_OPERANDS = ["REX.W", "REX", "VEX"]
 _X86_64_INSTRUCTION_TABLE_CSV_FNAME = "x86.csv"
 _INSTRUCTION_TABLE = None
 _MODRM_32_TABLE_CSV_FNAME = "ModRMTable32.csv"
@@ -22,58 +27,68 @@ _UNIMPLEMENTED_INSTRUCTION_TOKENS = [
     "r16", "r64", "r/m16", "r/m64", "m64", "xmm", "ymm", "ST(i)", "ST(0)",
     "rel16", " AX,", " AL,", ",AX", ",AL", "m2byte", "m16int", "m32int",
     "m64int", "m14/28byte", "m94/108byte", "m32fp", "m64fp", "STAC"]
-_CONTAINS_INVALID_INSTRUCTION_TOKENS = \
-    lambda inst_str: any([ i in inst_str for i in _UNIMPLEMENTED_INSTRUCTION_TOKENS])
-_JHU_REQUIRED_MNEMONICS = ["ADD", "JMP", "POP", "AND", "JZ", "JNZ", "PUSH", "CALL", "LEA", "REPNE CMPSD", "CLFLUSH", "MOV",
-                           "RETF", "CMP", "MOVSD", "RETN", "DEC", "NOP", "SUB", "IDIV", "NOT", "TEST", "INC", "OR",
-                           "XOR"]
-_REGISTERS = [
-    "eax",
-    "ecx",
-    "edx",
-    "ebx",
-    "esp",
-    "ebp",
-    "esi",
-    "edi"
-]
-_UNIMPLEMENTED_OPERANDS = [
-    "REX.W",
-    "REX",
-    "VEX"
-]
-CONTAINS_UNIMPLEMENTED_OPERANDS = \
-    lambda inst_str: any([ i in inst_str for i in _UNIMPLEMENTED_OPERANDS])
 
-def _try_parse_hex(raw_str):
-    """Tries to parse a string into bytes from hex and if it fails returns the string.
+
+def _contains_invalid_instruction_tokens(inst_str):
+    """Filters for instructions by keyword that are not supported
+
+    Args:
+        inst_str (str): The instruction string; ex 'MOV /r'
+
+    Returns:
+        bool: True if any unsupported keywords exist in the instruction.
+    """
+    return any([i in inst_str for i in _UNIMPLEMENTED_INSTRUCTION_TOKENS])
+
+
+def _contains_unimplemented_operands(inst_str):
+    """Filters for operands by keyword that are not supported
+
+    Args:
+        inst_str (str): The instruction string; ex 'MOV /r'
+
+    Returns:
+        bool: True if any unsupported keywords exist in the operands
+    """
+    return any([i in inst_str for i in _UNIMPLEMENTED_OPERANDS])
+
+
+def _try_parse_opcode_hex(raw_str):
+    """Tries to parse an operand string which, nomrally hex, may include suffixes such as +rd, cw, etc.
 
     Args:
         raw_str (str): A hex string
 
     Returns:
-        bytes, tuple of bytes or str:
-            The parsed bytes or the string if it could not be parsed from hex.
+        int, tuple of bytes or str:
+            The parsed bytes and additional opcodes as a tuple or the string if it could not be parsed from hex.
+            ex: _try_parse_opcode_hex('cw') -> 'cw'
+            ex: _try_parse_opcode_hex('50+rd') -> (50,51,52,53,54,55,56,57)
+            ex: _try_parse_opcode_hex('A7') -> 167
     """
-    if raw_str in ['cb', 'cd']: # Edge case for cb/cd operand. All hex should be upper case
+    if raw_str in ['cb', 'cd']:  # Edge case for cb/cd operand. All hex should be upper case
         return raw_str
     try:
         try:
-            return bytes.fromhex(raw_str)[0]
-        except:
+            return int.from_bytes(bytes.fromhex(raw_str))
+        except Exception:
             opcodes = []
-            if raw_str.endswith("+rd") or \
-                raw_str.endswith("+rw") or \
-                raw_str.endswith("+rb"):
+            if (raw_str.endswith("+rd") or
+                raw_str.endswith("+rw") or
+                raw_str.endswith("+rb")):
                 opcode = int(raw_str[:2], 16)
                 for i, _ in enumerate(_REGISTERS):
                     opcodes.append(opcode + i)
                 return tuple(opcodes)
             else:
                 return raw_str
-    except:
-        print(raw_str)
-        raise
+    except Exception as e:
+        _log.error("Error attempting to parse %s", raw_str, stack_info=True, exc_info=sys.exc_info())
+        if cheeseshredder.DEBUG:
+            raise e
+        else:
+            return f"[FAILED HEX PARSE OF {raw_str}]"
+
 
 def _bytes_to_signed_hex_string(val):
     """Converts a byte string into a 2's compliment bytestring based on the sign.
@@ -88,28 +103,19 @@ def _bytes_to_signed_hex_string(val):
     if type(val) is bytes:
         val = int.from_bytes(val, signed=True, byteorder='big')
         return "0x%08x" % (2**32 + val if val < 0 else val)
-    else: # Single byte
+    else:  # Single byte
         val = val if val < 128 else val - 256
         return "0x%08x" % (2**32 + val if val < 0 else val)
 
-def get_sib_table():
-    global _SIB_TABLE
-    if not _SIB_TABLE:
-        _SIB_TABLE = {}
-
-        sib_table_file = pkg_resources.resource_filename("cheeseshredder.arch.x86_64.data", _SIB_TABLE_CSV_FNAME)
-        with open(sib_table_file, "r", encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                _SIB_TABLE[bytes.fromhex(row["SIB"])[0]] = row
-    return _SIB_TABLE
 
 class ModRM:
+    """A class which holds metadata for a parsed modrm byte
+    """
     _REGISTER_CHARS = set(c for register in _REGISTERS for c in register)
     SINGLE_REGISTER_MODRM_PATTERN = r'^\[([' + r''.join(_REGISTER_CHARS).upper() + r']{3})\]$'
     DISP8_REGISTER_MODRM_PATTERN = r'^\[([' + r''.join(_REGISTER_CHARS).upper() + r']{3})\]\+disp8$'
     DISP32_REGISTER_MODRM_PATTERN = r'^\[([' + r''.join(_REGISTER_CHARS).upper() + r']{3})\]\+disp32$'
-    
+
     def __init__(self, *args, **kwargs):
         self.mod_rm = int(kwargs['ModR/M (dec)'])
         self.mod = int(kwargs['MOD'])
@@ -123,41 +129,37 @@ class ModRM:
         self.xmm = kwargs['xmm']
         self.digit = kwargs['/digit']
         self.sib_entry = None
-    
-    def __str__(self):
-        if self.mod_rm >= 192:
-            return f"{self.effective_address[:3].lower()},{self.r32.lower()}"
-        elif re.match(self.SINGLE_REGISTER_MODRM_PATTERN, self.effective_address):
-            # ex [EAX]
-            reg = self.effective_address[1:4].lower()
-            return f"{self.reg},{reg}"
-        elif self.effective_address == '[--][--]':
-            if self.sib_entry["Base"] == '5': # 101
-                if self.mod == 0:
-                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}SIMM32],{self.reg}"
-                elif self.mod == 1:
-                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}SIMM8+ebp],{self.reg}"
-                elif self.mod == 2:
-                    return f"[{self.sib_entry['Scaled Index'][1:-1].lower()}SIMM32+ebp],{self.reg}"
-                else:
-                    raise ValueError("There is no legal SIB state with mod bits set to 11.")
-            else:
-                return f"{self.reg}, [{self.sib_entry['r32'].lower()}+{self.sib_entry['Scaled Index'][1:-1].lower()}]"
-        elif self.effective_address == 'disp32':
-            return f"{self.reg},IMM32"
-        elif re.match(self.DISP8_REGISTER_MODRM_PATTERN, self.effective_address):
-            return f"{self.reg},[{self.effective_address[1:4].lower()}SIMM8]"
-        elif re.match(self.DISP32_REGISTER_MODRM_PATTERN, self.effective_address):
-            return f"{self.reg},[{self.effective_address[1:4].lower()}SIMM32]"
-        else:
-            return f"ILLEGAL INSTRUCTION {str(self.__dict__)}"
-                
+
+
+def get_sib_table():
+    """Gets the SIB mapping table if it hasn't yet been read and assigns it to _SIB_TABLE and returns it.
+
+    Returns:
+        dict: Dictionary of bytes->list of str
+    """
+    global _SIB_TABLE
+    if not _SIB_TABLE:
+        _SIB_TABLE = {}
+
+        sib_table_file = pkg_resources.resource_filename("cheeseshredder.arch.x86_64.data", _SIB_TABLE_CSV_FNAME)
+        with open(sib_table_file, "r", encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                _SIB_TABLE[bytes.fromhex(row["SIB"])[0]] = row
+    return _SIB_TABLE
+
+
 def get_modrm_mapping():
+    """Gets the modrm mapping table if it hasn't yet been read and assigns it to _MODRM_TABLE and returns it.
+
+    Returns:
+        dict: Dictionary of str->dict of byte->ModRM object. First 2 valid keys are "16" or "32" only.
+    """
     global _MODRM_TABLE
     if not _MODRM_TABLE:
         _MODRM_TABLE = {
-            "32":{},
-            "16":{}
+            "32": {},
+            "16": {}
         }
         modrm_table_file = pkg_resources.resource_filename("cheeseshredder.arch.x86_64.data", _MODRM_32_TABLE_CSV_FNAME)
         with open(modrm_table_file, "r", encoding='utf-8-sig') as f:
@@ -171,26 +173,37 @@ def get_modrm_mapping():
                 _MODRM_TABLE["16"][bytes.fromhex(row["ModR/M"])[0]] = ModRM(**row)
     return _MODRM_TABLE
 
+
 def get_instruction_table():
+    """Gets the instruction table if it hasn't yet been read and assigns it to _INSTRUCTION_TABLE and returns it.
+
+    Returns:
+        dict: Dictionary of tuple(opcode, operands)->Instruction object
+    """
     global _INSTRUCTION_TABLE
     if not _INSTRUCTION_TABLE:
         _INSTRUCTION_TABLE = {}
-        instruction_table_file = pkg_resources.resource_filename("cheeseshredder.arch.x86_64.data", _X86_64_INSTRUCTION_TABLE_CSV_FNAME)
+        instruction_table_file = pkg_resources.resource_filename(
+            "cheeseshredder.arch.x86_64.data", _X86_64_INSTRUCTION_TABLE_CSV_FNAME)
         with open(instruction_table_file, "r", encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 instruction = X86_64Instruction.instruction_from_row(row)
-                if (_CONTAINS_INVALID_INSTRUCTION_TOKENS(row["Instruction"]) or
-                    CONTAINS_UNIMPLEMENTED_OPERANDS(row["Opcode"]) or
+                if (_contains_invalid_instruction_tokens(row["Instruction"]) or
+                    _contains_unimplemented_operands(row["Opcode"]) or
                     row["Valid 32-bit"] == "Invalid" or
-                    instruction.mnemonic not in _JHU_REQUIRED_MNEMONICS
-                ):
+                    instruction.mnemonic not in _JHU_REQUIRED_MNEMONICS):
                     continue
                 _INSTRUCTION_TABLE[(instruction.opcode, instruction.operands)] = instruction
     return _INSTRUCTION_TABLE
 
 
 def get_prefix_table():
+    """Gets the prefix table if it hasn't yet been read and assigns it to _PREFIXES and returns it.
+
+    Returns:
+        list of byte
+    """
     global _PREFIXES
     if not _PREFIXES:
         _PREFIXES = []
@@ -201,7 +214,10 @@ def get_prefix_table():
                 _PREFIXES.append(bytes.fromhex(row["HEX"])[0])
     return _PREFIXES
 
+
 class X86_64Disassembler(Disassember):
+    """X86_64 disassembler class.
+    """
     def __init__(self) -> None:
         super().__init__()
         get_sib_table()
@@ -212,16 +228,27 @@ class X86_64Disassembler(Disassember):
     def get_instruction_table(self):
         return _INSTRUCTION_TABLE
 
+
 class X86_64Instruction(Instruction):
+    """X86_64 instruction class.
+    """
     def instruction_from_row(row):
+        """Takes a row from the instruction table and instantiates an Instruction object.
+
+        Args:
+            row (dict): Row of data from the instruction table indexed by column headers.
+
+        Returns:
+            cheeseshredder.arch.x86_64.X86_64Instruction: The parsed instruction
+        """
         # Get the opcode
         opcodes = tuple([
-            _try_parse_hex(token) 
+            _try_parse_opcode_hex(token)
             for token in row["Opcode"].split(" ")
             if token != '+'
         ])
-        opcode_encoding_with_register = any([type(opcode) == tuple for opcode in opcodes])
-        has_immediate = any([opcode in ['id','iw','ib','cw','cb','ci'] for opcode in opcodes])
+        opcode_encoding_with_register = any([type(opcode) is tuple for opcode in opcodes])
+        has_immediate = any([opcode in ['id', 'iw', 'ib', 'cw', 'cb', 'ci'] for opcode in opcodes])
         no_prefixes = False
         if opcodes[0] == "NP":
             no_prefixes = True
@@ -243,26 +270,26 @@ class X86_64Instruction(Instruction):
             "description": row["Description"]
         }
         return X86_64Instruction(**kwargs)
-        
+
     def is_valid(self, instruction_bytes):
         """Returns if the instruction is valid, partial or invalid (2, 1, 0)
 
         Args:
             instruction_bytes (_type_): _description_
-        
+
         Returns:
             int: Valid, Partial, or Invalid match. (2, 1, 0)
         """
         # Check for NOP/XCHNG EAX,EAX edge case. Don't match on XCHG
         if self.mnemonic == "XCHG" and instruction_bytes == b'\x90':
             return 0
-        
+
         # Check if opcode is satisfied
         byte_pos = 0
         self.parsed_operands = []
         for b in self.opcode:
             if byte_pos >= len(instruction_bytes):
-                return 1 # If we've gotten this far, we have a partial match
+                return 1  # If we've gotten this far, we have a partial match
             if type(b) is str:
                 if b in ['/r', '/0', '/1', '/2', '/3', '/4', '/5', '/6', '/7']:
                     mod_rm_entry = _MODRM_TABLE["32"][instruction_bytes[byte_pos]]
@@ -272,13 +299,13 @@ class X86_64Instruction(Instruction):
                         if not b.endswith(mod_rm_entry.digit):
                             return 0
                     self.parsed_operands.append(mod_rm_entry)
-                    
+
                     if '[--][--]' in mod_rm_entry.effective_address:
                         byte_pos += 1
                         if byte_pos < len(instruction_bytes):
                             sib_entry = _SIB_TABLE[instruction_bytes[byte_pos]]
                             mod_rm_entry.sib_entry = sib_entry
-                            if (sib_entry['r32'].startswith('A disp32 with') and 
+                            if (sib_entry['r32'].startswith('A disp32 with') and
                                 'disp' not in mod_rm_entry.effective_address):
                                 if mod_rm_entry.mod == 0:
                                     byte_pos += 4
@@ -296,23 +323,23 @@ class X86_64Instruction(Instruction):
                     else:
                         byte_pos += 1
                     continue
-                
-                elif b in ['cd', 'id']: # imm32
+
+                elif b in ['cd', 'id']:  # imm32
                     if byte_pos + 4 > len(instruction_bytes):
                         return 1
                     else:
-                        self.parsed_operands.append(instruction_bytes[byte_pos:byte_pos+4])
+                        self.parsed_operands.append(instruction_bytes[byte_pos:byte_pos + 4])
                     byte_pos += 4
                     continue
-                elif b in ['cw', 'iw']: # imm16
+                elif b in ['cw', 'iw']:  # imm16
                     if byte_pos + 2 > len(instruction_bytes):
                         return 1
                     else:
-                        self.parsed_operands.append(instruction_bytes[byte_pos:byte_pos+2])
+                        self.parsed_operands.append(instruction_bytes[byte_pos:byte_pos + 2])
                     byte_pos += 2
                     continue
-                elif b in  ['cb', 'ib']: # imm8
-                    self.parsed_operands.append(instruction_bytes[byte_pos:byte_pos+1])
+                elif b in ['cb', 'ib']:  # imm8
+                    self.parsed_operands.append(instruction_bytes[byte_pos:byte_pos + 1])
                     byte_pos += 1
                     continue
                 else:
@@ -324,46 +351,101 @@ class X86_64Instruction(Instruction):
                 if b != instruction_bytes[byte_pos]:
                     return 0
             byte_pos += 1
-        # If we parse successfull 
+        # If we parse successfull
         if byte_pos == len(instruction_bytes):
             self.instruction_bytes = instruction_bytes[:]
             if self.mnemonic.startswith("J") and type(self.parsed_operands[-1]) is bytes:
-                self.jump_offset = int.from_bytes(self.parsed_operands[-1], signed=True, byteorder="big") + len(instruction_bytes)
+                self.jump_offset = (int.from_bytes(self.parsed_operands[-1], signed=True, byteorder="big") +
+                                    len(instruction_bytes))
             elif self.mnemonic == "CALL" and type(self.parsed_operands[-1]) is bytes:
                 self.call_offset = int.from_bytes(self.parsed_operands[-1][::-1], signed=True, byteorder="big")
+            _log.debug("%s bytes match instruction %s", instruction_bytes, self)
             return 2
         else:
             return 1
-    
+
     def sub_disp(self, instruction_bytes, operand_str, byte_offset):
-        # If it's justr a disp32 or disp8 it's 
+        """Substitutes disp8 and disp32 values in instruction string templates with the appropriate parsed bytes from
+        the instruction.
+
+        Args:
+            instruction_bytes (bytes): The bytes for the instruction
+            operand_str (str): The operand string template
+            byte_offset (int): The current byte offset provided by the caller
+
+        Returns:
+            str: The operand with disp8 and disp32 appopriately substituted.
+        """
+        # If it's just a disp32 or disp8 it's a pointer, so wrap in brackets and return it. It will get replaced by
+        # other logic
         if operand_str in ["disp32", "disp8"]:
             operand_str = f"[{operand_str}]"
+
+        # Find all occurrences of disp8/disp32
         disp_pattern = r'\b(disp(?:8|32))\b'
         disp_str_matches = re.findall(disp_pattern, operand_str)
+
+        # Break the operand up into components around the disp8/disp32 occurrences
         operand_str_components = re.split(r'disp(?:8|32)', operand_str)
+
+        # Go through the disp occurrences in reverse order (easier to slice the bytes backwards)
         disp_count = 0
         ret_oper_str = [operand_str_components[0]]
         for disp_str in disp_str_matches[::-1]:
+            # Insert 4 bytes from the end of the unparsed portion of the instruction
             if disp_str == 'disp32':
-                ret_oper_str.append(_bytes_to_signed_hex_string(instruction_bytes[len(instruction_bytes)-4-byte_offset:len(instruction_bytes)-byte_offset][::-1]))
+                ret_oper_str.append(
+                    _bytes_to_signed_hex_string(
+                        instruction_bytes[
+                            len(instruction_bytes) - 4 - byte_offset:len(instruction_bytes) - byte_offset][::-1]))
+                # Increment the byte offset by 4/disp count by 1
                 byte_offset += 4
                 disp_count += 1
+                # Concat the next operand component (if possible)
                 if disp_count < len(operand_str_components) - 1:
                     ret_oper_str.append(operand_str_components[disp_count])
             elif disp_str == 'disp8':
-                ret_oper_str.append(_bytes_to_signed_hex_string(instruction_bytes[len(instruction_bytes)-1-byte_offset:len(instruction_bytes)-byte_offset][::-1]))
-                byte_offset+=1
+                # Insert 1 byte from the end of the unparsed portion of the instruction
+                ret_oper_str.append(
+                    _bytes_to_signed_hex_string(
+                        instruction_bytes[
+                            len(instruction_bytes) - 1 - byte_offset:len(instruction_bytes) - byte_offset][::-1]))
+                # Increment the byte offset
+                byte_offset += 1
                 disp_count += 1
+                # Concat the next operand component (if possible)
                 if disp_count < len(operand_str_components) - 1:
                     ret_oper_str.append(operand_str_components[disp_count])
+        # Concat any trailing operand components and return the formatted string
         if disp_count < len(operand_str_components):
             ret_oper_str.append(operand_str_components[disp_count])
-        return byte_offset, "".join(ret_oper_str)        
-    
+        return byte_offset, "".join(ret_oper_str)
+
     def format(self, instruction_bytes, address, label_jumps=True, label_functions=False):
+        """Formats an instruction given an address and isntruction bytes.
+
+        Args:
+            instruction_bytes (bytes): The bytes for the instruction
+            address (int): Address in memory for the instruction (needed for formating JZ/JE/JNE/JNZ/CALL instructions)
+            label_jumps (bool, optional): Whether to labels jumps in 'offset_XXXXXXXXXh' foramt. Defaults to True.
+            label_functions (bool, optional): Whether to label calls in 'func_XXXXXXXX' foramt. Defaults to False.
+
+        Raises:
+            ValueError: Raised when an SIB byte is parsed with an illegal state.
+
+        Returns:
+            str: The formatted instruction. Ex:
+                    i = ...JMP instruction
+                    str = i.format(b'\xE9\x4C\x00\x00\x00', 4)
+                    print(str)
+                    E94C000000 jmp 0x55
+        """
         try:
+            # Setup the initial instruction template:
             instruction_str = f"{instruction_bytes.hex().upper()} {self.mnemonic.lower()} "
+
+            # If the opcode is encoded with registers (ex: PUSH/50+rd), loop through and find which one matches so we
+            # append the correct register
             operand_count = 0
             if self.opcode_encoding_with_register:
                 # Sometimes these instructions have prefixes like 0FC8+rd for BSWAP, so we have to loop through all
@@ -373,47 +455,81 @@ class X86_64Instruction(Instruction):
                         index = o.index(instruction_bytes[i])
                         instruction_str += _REGISTERS[index].lower()
                         operand_count += 1
+
+            # Loop through and append formated parsed operands
             disp_byte_offset = 0
             formatted_operands = []
             for operand in self.parsed_operands[::-1]:
+                # If the operand is a modrm byte:
                 if type(operand) is ModRM:
+                    # Handle SIB bytes if needed
                     operand_str = ""
                     if '[--][--]' in operand.effective_address:
-                        if operand.sib_entry["Base"] == '5': # 101
+                        if operand.sib_entry["Base"] == '5':  # 101
                             if operand.mod == 0:
-                                operand_str =  f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp32],{operand.reg}"
+                                operand_str = (f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp32],"
+                                               f"{operand.reg}")
                             elif operand.mod == 1:
-                                operand_str = f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp8+ebp],{operand.reg}"
+                                operand_str = (f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp8+ebp],"
+                                               f"{operand.reg}")
                             elif operand.mod == 2:
-                                operand_str = f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp32+ebp],{operand.reg}"
+                                operand_str = (f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp32+ebp],"
+                                               f"{operand.reg}")
                             else:
-                                raise ValueError("There is no legal SIB state with mod bits set to 11.")
+                                _log.error(
+                                    "Illegal SIB state with mod bits set to 11 when parsing %s as an %s instruction.",
+                                    instruction_bytes.hex(), self)
+                                if cheeseshredder.DEBUG:
+                                    raise ValueError("Illegal SIB state with mod bits set to 11.")
+                                else:
+                                    operand_str = (f"[{operand.sib_entry['Scaled Index'][1:-1].lower()}+disp32+ebp],"
+                                                   f"{operand.reg}")
                         else:
-                            operand_str = f"[{operand.sib_entry['r32'].lower()}+{operand.sib_entry['Scaled Index'][1:-1].lower()}{operand.effective_address[8:]}],{operand.reg}"
+                            operand_str = (
+                                f"[{operand.sib_entry['r32'].lower()}+{operand.sib_entry['Scaled Index'][1:-1].lower()}"
+                                f"{operand.effective_address[8:]}],{operand.reg}")
+                    # If the second operand is an immediate, check if you need to reformat it
                     elif (self.operands[0] and
-                        self.operands[1] and
-                        "ModRM" in self.operands[0] and
-                        "imm" in self.operands[1]):
-                        if bool(re.search(r'\[[a-z]{3}\]\+disp\d+', operand.effective_address)):
+                          self.operands[1] and
+                          "ModRM" in self.operands[0] and
+                          "imm" in self.operands[1]):
+                        # If it's in the format similar to '[eax]+disp32'...
+                        if bool(re.search(r'\[[a-z]{3}\]\+disp\d+', operand.effective_address)):  # ex
+                            # ...reformat it to the format '[eax+disp32]' or similar
                             operand_str = re.sub(r'\[([a-z]{3})\](\+disp\d+)', r'[\1\2]', operand.effective_address)
                         else:
+                            # Otherwise do not modify the format
                             operand_str = operand.effective_address
-                    elif(self.operands[0] and "ModRM:reg" in self.operands[0]):
+                    # If the first operand is a reg operand
+                    elif (self.operands[0] and "ModRM:reg" in self.operands[0]):
+                        # If it includes disp8/disp32 reformat similar to eax,[ecx+disp32]
                         if "+disp" in operand.effective_address:
-                            operand_str = f"{operand.reg},[{operand.effective_address[1:4]}{operand.effective_address[5:]}]"
+                            operand_str = (
+                                f"{operand.reg},[{operand.effective_address[1:4]}"
+                                f"{operand.effective_address[5:]}]")
+                        # Otherwise just reformat it to standard eax,ecx syntax
                         else:
                             operand_str = f"{operand.reg},{operand.effective_address}"
-                    elif(operand in ["disp8", "disp32"]):
+                    # If the operand is disp8 or disp32 by itself, wrap in [] since it's representing a pointer
+                    elif (operand in ["disp8", "disp32"]):
                         operand_str = f"[{operand}]"
                     else:
+                        # If a disp exists in the effective address reformat similar to:
+                        # [eax+disp32],ecx
                         if "+disp" in operand.effective_address:
-                            operand_str = f"[{operand.effective_address[1:4]}{operand.effective_address[5:]}],{operand.reg}"
+                            operand_str = (
+                                f"[{operand.effective_address[1:4]}"
+                                f"{operand.effective_address[5:]}],"
+                                f"{operand.reg}")
                         else:
+                            # Otherwise just reformat it to standard eax,ecx syntax
                             operand_str = f"{operand.effective_address},{operand.reg}"
 
-                    if self.mnemonic in ["PUSH", "POP"]: # Edge case, only one operand in a push/pop
+                    # Special case for push and pop; they only care about 1 operand even when they have a /r argument
+                    if self.mnemonic in ["PUSH", "POP"]:  # Edge case, only one operand in a push/pop
                         operand_str = operand_str.split(",")[0]
-                    
+
+                    # Replace disp8/disp32 accordingly and keep track of the byte offset for parsing further operands
                     if "disp" in operand_str:
                         disp_byte_offset, operand_str = self.sub_disp(instruction_bytes, operand_str, disp_byte_offset)
 
@@ -423,28 +539,45 @@ class X86_64Instruction(Instruction):
                         break
 
                     formatted_operands = [f"{operand_str}"] + formatted_operands
+                # If the operand is a bytestring
                 elif type(operand) is bytes:
+                    # Special formatting for jumps
                     if self.mnemonic in ["JZ", "JE", "JNZ", "JNE", "JMP"]:
-                        # Sepcial handling for jumps
-                        jump_addr = '%08x' % (self.jump_offset + address)
-                        encoded_operand = f"offset_{jump_addr}h"
+                        encoded_operand = '%08x' % (self.jump_offset + address)
+                        if label_jumps:
+                            encoded_operand = f"offset_{encoded_operand}h"
+                    # Special formatting for calls
                     elif self.mnemonic == "CALL":
-                        encoded_operand = '0x%08x' % (self.call_offset + len(instruction_bytes) + address)
+                        if label_functions:
+                            encoded_operand = 'func_%08x' % (self.call_offset + len(instruction_bytes) + address)
+                        else:
+                            encoded_operand = '0x%08x' % (self.call_offset + len(instruction_bytes) + address)
+                    # Everything else, just encode in lowercase hex
                     else:
                         encoded_operand = f"0x{operand[::-1].hex().lower()}"
                         disp_byte_offset += len(operand)
-                    formatted_operands = [encoded_operand if operand_count == 0 else f",{encoded_operand}"] + formatted_operands
+                    formatted_operands = ([encoded_operand
+                                           if operand_count == 0
+                                           else f",{encoded_operand}"] + formatted_operands)
                 operand_count += 1
+
+            # Combine/append the formatted operands
             instruction_str += ",".join(formatted_operands)
-            instruction_str = instruction_str[:-1] if instruction_str.endswith(",") else instruction_str
-            instruction_str = instruction_str.replace("+0x00000000","") # Get rid of any +0 stuff
+            # Replace any +0x00000000 values with an empty string for better readability
+            instruction_str = instruction_str.replace("+0x00000000", "")
             return instruction_str.strip()
-        except:
-            raise Exception(f"This failed: {instruction_bytes.hex()}")
-    
+        except Exception as e:
+            _log.error(
+                f"Instruction bytes failed in parsing: {instruction_bytes.hex()}",
+                exec_info=sys.exc_info(), stack_info=True)
+            if cheeseshredder.DEBUG:
+                raise e
+            else:
+                return f"{instruction_bytes.hex().upper()}"
+
     def __repr__(self):
-        return f"{self.mnemonic} {self.operands}"
-    
+        return self.__str__()
+
     def __str__(self):
         return f"{self.mnemonic} {self.operands}"
 
@@ -465,6 +598,3 @@ class X86_64Instruction(Instruction):
         self.displacement = None
         for k, v in kwargs.items():
             setattr(self, k, v)
-
-if __name__ == "__main__":
-    print(_INSTRUCTION_TABLE)

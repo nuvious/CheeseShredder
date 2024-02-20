@@ -2,10 +2,29 @@
 
 A decompiler for x86 written in python.
 
+## Overview
+
+Cheeseshredder is a linear-sweep disassembler with a modular design to allow support for other architectures in the
+future. 
+
+## Requirements
+
+- Python 3.7+
+
+## Quick-Start
+
+Clone or decompress the release tar.gz/zip to a directory of your choosing. Then run `pip install .` in the target
+directory.
+
+```bash
+tar -xvf 
+pip3 install 
+```
+
 ## Usage
 
 ```bash
-pip install cheeseshredder
+pip3 install .
 cheeseshredder -i my_binary
 ```
 
